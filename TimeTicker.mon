@@ -1,0 +1,134 @@
+/*
+ * $Copyright (c) 2018-2019 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
+ * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Software AG
+ */
+
+package apama.analyticskit.blocks.cumulocity;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+using apama.analyticsbuilder.Value;
+using apama.analyticsbuilder.TimerParams;
+using com.apama.exceptions.Exception;
+using apama.analyticsbuilder.L10N;
+using apama.analyticsbuilder.Promise;
+/*using apama.analyticsbuilder.cumulocity.inventory.InventoryLookup;
+using apama.analyticsbuilder.cumulocity.inventory.InventoryLookupResult;
+using apama.analyticsbuilder.cumulocity.inventory.InputHelper;
+*/
+using apama.analyticsbuilder.Partition_Broadcast;
+using apama.analyticsbuilder.Configuration;
+using apama.analyticsbuilder.ConfigurationProperty;
+
+/**
+ * Parameters
+ * The parameters for the Event Input Block.
+ */
+event TimeTicker_$Parameters{
+	/**
+	 * Device or Device Group.
+	 *
+	 * The device or device group from which the event has been received.
+	 *
+	 * The model editor uses the current device or group name. This is mapped internally to the inventory identifier.
+	 * @$semanticType c8y_deviceOrGroupId
+	 */
+	string deviceId;
+	
+	/**
+	 * Time period.
+	 *
+	 * Time between outputs in seconds.
+	 */
+	float periodSecs;
+	
+	/** Validate that values for all paramters have been provided. */
+	action $validate() {
+		BlockBase.throwsOnEmpty(deviceId, "deviceId", self);
+	}
+}
+
+event TimeTicker_$State {
+	float counter;
+}
+
+/**
+ * Time ticker.
+ *
+ * Generates output periodically.
+ *
+ * Generates an increasing output starting from 1 and increasing by 1 every time period.
+ *
+ * The output is associated with the device or devices in deviceId.
+ *
+ * @$blockCategory Utilities
+ * @$derivedName Time ticker $periodSecs
+ */
+event TimeTicker{
+
+	BlockBase $base;
+
+	/**The parameters for the block. */
+	TimeTicker_$Parameters $parameters;
+	
+	/**All the devices for which block will be listening. @private */
+	sequence<string> devices; // set by reflection in InputHelper
+	boolean isGroup; // set by reflection in InputHelper
+	boolean isBroadcastDevice; // set by reflection in InputHelper
+
+	action $validate(dictionary<string, any> $modelScopeParameters) returns Promise {
+	
+		InputHelper ihelper := InputHelper.forBlock(self, $modelScopeParameters);
+		
+		return InventoryLookup.lookup($parameters.deviceId).andThen(returnNull);
+	}
+	
+	action returnNull(any a) returns any {
+		return new any;
+	}
+
+	action throwNoDevices(string nameOrId) {
+		throw L10N.getLocalizedException("blk_apama.analyticskit.blocks.cumulocity.TimeTicker_no_devices", [<any> nameOrId]);
+	}
+
+	/**
+	 * Method starts listening for the events from Cumulocity 
+	 * and prepares memory store. 
+	 */
+	action $init() {
+		string id;
+		for id in devices{
+			try {
+				TimerParams tp := TimerParams.recurring($parameters.periodSecs);
+				if(isGroup) {
+					tp := tp.withPartition(id);
+				}
+				else if(isBroadcastDevice) {
+					tp := tp.withPartition(Partition_Broadcast(id));
+				} else {
+					tp := tp.withPartition(id);
+				}
+				any discard := $base.createTimerWith(tp);
+			} catch(Exception e) {
+			}
+		}
+	}
+	
+	/**
+	 * Sets output on the current activation.
+	 * @param $activation The current activation.
+	 * @param value value to be put on the wire.
+	 */
+	action $timerTriggered(Activation $activation, TimeTicker_$State $blockState) {
+		$blockState.counter := $blockState.counter + 1.0;
+		$setOutput_value($activation, $blockState.counter);
+	}
+
+	/**
+	 * Ticker value
+	 *
+	 * Generates a new output every periodSecs
+	 */
+	action<Activation,float> $setOutput_value;
+
+}
