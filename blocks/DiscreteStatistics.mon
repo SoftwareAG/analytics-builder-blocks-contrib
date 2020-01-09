@@ -1,0 +1,126 @@
+/*
+ * $Copyright (c) 2020 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
+ * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Software AG
+ */
+
+package apamax.analyticsbuilder.blocks;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+using apama.analyticsbuilder.Value;
+using apama.analyticsbuilder.TimerParams;
+using com.apama.exceptions.Exception;
+using apama.analyticsbuilder.L10N;
+using apama.analyticsbuilder.Promise;
+
+
+event DiscreteStatistics_$State {
+	float sum;
+	float sum_squared;
+	integer count;
+	float min;
+	float max;
+
+
+	action reset() {
+		sum := 0.0;
+		sum_squared := 0.0;
+		count := 0;
+		min := float.INFINITY;
+		max := -float.INFINITY;
+	}
+	
+	action update(float value) {
+		sum := sum + value;
+		sum_squared := sum_squared + value * value;
+		count := count + 1;
+		min := float.min(min, value);
+		max := float.max(max, value);
+	}
+}
+/**
+ * Discrete Statistics
+ *
+ * Statistics for discrete measurements.
+ *
+ * Generates statistics - minimum, maximum, sum, count, mean and standard deviation for discrete time inputs.
+ *
+ * If the sample input is not connected, every re-evaluation will count, including when reset. If connected, block will
+ * only update when a signal on the sample input is received.  A sample and reset can co-incide, in which case the block
+ * resets its state and then updates for the given value.
+ *
+ * @$blockCategory Aggregates
+ */
+event DiscreteStatistics {
+
+	BlockBase $base;
+
+
+	
+	/**
+	 * Calculates statistics.
+	 * @param $activation The current activation.
+	 * @param $input_value The input value.
+	 * @param $input_sample A new sample is provided.
+	 * @param $input_reset Reset the state of the block.
+	 */
+	action $process(Activation $activation, float $input_value, boolean $input_reset, boolean $input_sample, DiscreteStatistics_$State $blockState) {
+		if $blockState.count = 0 or $input_reset {
+			$blockState.reset();
+		}
+		if $base.getInputCount("sample") = 0 or $input_sample {
+			$blockState.update($input_value);
+		}
+		$setOutput_sum($activation, $blockState.sum);
+		$setOutput_count($activation, $blockState.count.toFloat());
+		$setOutput_min($activation, $blockState.min);
+		$setOutput_max($activation, $blockState.max);
+		float mean := $blockState.sum / $blockState.count.toFloat();
+		$setOutput_mean($activation, mean);
+		$setOutput_standardDeviation($activation, (($blockState.sum_squared / $blockState.count.toFloat()) - (mean * mean)).sqrt());
+	}
+
+	/**
+	 * Sum
+	 *
+	 * Sum of the received input values.
+	 */
+	action<Activation,float> $setOutput_sum;
+	/**
+	 * Count
+	 *
+	 * Count of the received input values.
+	 */
+	action<Activation,float> $setOutput_count;
+	/**
+	 * Mean
+	 *
+	 * Mean of the received input values.
+	 */
+	action<Activation,float> $setOutput_mean;
+	/**
+	 * Standard deviation
+	 *
+	 * Standard deviation of the received input values.
+	 */
+	action<Activation,float> $setOutput_standardDeviation;
+	/**
+	 * Minimum
+	 *
+	 * Minimum of the received input values.
+	 */
+	action<Activation,float> $setOutput_min;
+	/**
+	 * Maximum
+	 *
+	 * Maximum of the received input values.
+	 */
+	action<Activation,float> $setOutput_max;
+
+		/**Defines type for input reset.*/
+	constant string $INPUT_TYPE_reset := "pulse";
+	
+	/**Defines type for input sample.*/
+	constant string $INPUT_TYPE_sample := "pulse";
+
+}
