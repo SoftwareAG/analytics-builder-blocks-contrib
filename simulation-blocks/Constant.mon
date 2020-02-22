@@ -1,0 +1,47 @@
+package com.softwareag.simulation;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+
+event Constant_$Parameters {
+	
+	/**
+	 * Constant.
+	 * 
+	 * The constant value this block should produce.
+	 **/
+	float const;
+	
+}
+
+/**
+* Constant.
+*
+* Create a signal with a constant value.
+*
+* @$blockCategory Calculations
+* @$derivedName $const
+*/
+event Constant {
+			
+	BlockBase $base;
+	Constant_$Parameters $parameters;
+	
+	/**
+	 * @param $input_trigger The trigger to generate an output.
+	 *
+	 * @$inputName trigger Trigger
+	 */
+	 action $process(Activation $activation, boolean $input_trigger) {
+		 $setOutput_output($activation, $parameters.const);
+	 }
+	 
+	/**
+	 * Constant.
+	 *
+	 * The constant output value.
+	 */
+	action<Activation, float> $setOutput_output;
+
+
+}

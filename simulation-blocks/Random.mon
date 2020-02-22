@@ -1,0 +1,49 @@
+package com.softwareag.simulation;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+
+event Random_$Parameters {
+	
+	/**
+	 * Limit.
+	 * 
+	 * Generate a random value between 0.0 and this float.
+	 *
+     * Returns a random value from 0.0 up to (but not including) the value the method was invoked on. If the value was negative, then the random value will be from the value (but not including it) up to 0.0. (0.0).rand() always returns 0.
+	 **/
+	float limit;
+	
+}
+
+/**
+* Random.
+*
+* Create a signal with a random value.
+*
+* @$blockCategory Calculations
+*/
+event Random {
+			
+	BlockBase $base;
+	Random_$Parameters $parameters;
+	
+	/**
+	 * 
+	 * @param $input_trigger The trigger to generate an output.
+	 *
+	 * @$inputName trigger Trigger
+	 */
+	 action $process(Activation $activation, boolean $input_trigger) {
+		 $setOutput_output($activation, $parameters.limit.rand());
+	 }
+	 
+	/**
+	 * Output.
+	 *
+	 * The random output value.
+	 */
+	action<Activation, float> $setOutput_output;
+
+
+}
