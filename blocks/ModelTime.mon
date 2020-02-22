@@ -1,0 +1,29 @@
+package com.softwareag.simulation;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+
+
+/**
+ * Model Time.
+ *
+ * Return the current model time.
+ *
+ * @$blockCategory Utilities
+ */
+event ModelTime {
+
+	BlockBase $base;
+
+	/**
+   	 * @param $input_trigger The trigger to generate an output.
+   	 *
+   	 * @$inputName trigger Trigger
+	 */
+	 action $process(Activation $activation, boolean $input_trigger) {
+        $setOutput_output($activation, $base.getModelTime());
+    }
+
+	action<Activation, float> $setOutput_output;
+
+}

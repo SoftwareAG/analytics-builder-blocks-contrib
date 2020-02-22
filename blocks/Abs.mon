@@ -1,0 +1,35 @@
+package com.softwareag.simulation;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+
+
+/**
+ * Abs.
+ *
+ * Return the absolute value of the input.
+ *
+ * @$blockCategory Calculations
+ */
+event Abs {
+
+	BlockBase $base;
+
+	/**
+	 * @param $input_value The input value.
+	 *
+	 * @$inputName value Value
+	 */
+	 action $process(Activation $activation, float $input_value) {
+		 $setOutput_absoluteValue($activation, $input_value.abs());
+    }
+
+	 
+	 /**
+	  * Absolute Value.
+	  *
+	  * The absolute value of the input
+	  */
+	action<Activation, float> $setOutput_absoluteValue;
+
+}
