@@ -1,0 +1,124 @@
+package com.softwareag.simulation;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+
+event ApproximateWaveFormGenerator_$Parameters {
+	
+	
+	/**
+	 * Generator type.
+	 * 
+	 * Select the type of generator to use.
+	 */
+	string type;
+	
+	/** Square */
+	constant string type_square := "square";
+	/** Triangle */
+	constant string type_triangle := "triangle";
+	/** Sawtooth */
+	constant string type_sawtooth := "sawtooth";
+	
+	/**
+	 * Frequency (hz).
+	 * 
+	 * The frequency of the generated wave form.
+	 **/
+	float frequency;
+
+	/**
+	 * Amplitude.
+	 * 
+	 * The amplitude of the generated wave form.
+	 **/
+	float amplitude;
+	
+	/**
+	 * #Harmonics.
+	 * 
+	 * The number of harmonics to use to approximate the wave form.
+	 **/
+	integer harmonicCount;
+	
+}
+
+/**
+* Approximate Waveform Generator.
+*
+* Create a signal approximating on a defined wave form using sine waves.
+* The block supports the approximation of triangle, square and sawtooth waves.
+* The block is triggered by a pulse signal and the calculation is based on the 
+* model time. Thus the interval in which this block is triggered only determines
+* the resolution of the produced wave. 
+* 
+* The number of harmonics determines how close the approximation to the 
+* theoretical wave form is. If #harmonics=1 a single sine wave will be used.
+* Good approximations require at least 3-5 harmonic waves. 
+*
+* @$blockCategory Calculations
+* @$derivedName $type (Approx)
+*/
+event ApproximateWaveFormGenerator {
+			
+	BlockBase $base;
+	ApproximateWaveFormGenerator_$Parameters $parameters;
+	
+	/**
+	 * @param $input_trigger The trigger to generate an output.
+	 *
+	 * @$inputName trigger Trigger
+	 */
+	 action $process(Activation $activation, boolean $input_trigger) {
+		float t := $base.getModelTime();
+		if($parameters.type = ApproximateWaveFormGenerator_$Parameters.type_square) {
+			float addedHarmonics := 0.0;
+			integer i := 0;
+			while i < $parameters.harmonicCount {
+				addedHarmonics := addedHarmonics + harmonic_square(2.0 * float.PI * $parameters.frequency*t,i);
+				i := i + 1;
+			}
+			$setOutput_output($activation, $parameters.amplitude * (4.0/float.PI) * addedHarmonics);
+		} else if($parameters.type = ApproximateWaveFormGenerator_$Parameters.type_triangle) {
+			float addedHarmonics := 0.0;
+			integer i := 0;
+			while i < $parameters.harmonicCount {
+				addedHarmonics := addedHarmonics + harmonic_triangle(t,i);
+				i := i + 1;
+			}
+			$setOutput_output($activation, $parameters.amplitude * (8.0/(float.PI*float.PI)) * addedHarmonics);		
+		} else if($parameters.type = ApproximateWaveFormGenerator_$Parameters.type_sawtooth) {
+			float addedHarmonics := 0.0;
+			integer i := 1;
+			while i <= $parameters.harmonicCount {
+				addedHarmonics := addedHarmonics + harmonic_sawtooth(t,i);
+				i := i + 1;
+			}
+			$setOutput_output($activation, ($parameters.amplitude/2.0) - (($parameters.amplitude/float.PI) * addedHarmonics));		
+		}
+    }
+	 
+	 action harmonic_sawtooth(float x, integer n) returns float {
+		 float k := n.toFloat();
+		 return 1.0/k * (2.0*float.PI*k*$parameters.frequency*x).sin();
+	 }
+
+	 action harmonic_triangle(float x, integer n) returns float {
+		 float h := (n*2+1).toFloat();
+		 return (-1.0.pow(n.toFloat()) / (h*h)) * (2.0*float.PI*$parameters.frequency*x*h).sin();
+	 }
+
+	 action harmonic_square(float x, integer n) returns float {
+		 float h := (n*2+1).toFloat();
+		 return 1.0/h * (h*x).sin();
+	 }
+	 	 
+	/**
+	 * Output.
+	 *
+	 * The value of the wave at the current time.
+	 */
+	action<Activation, float> $setOutput_output;
+
+
+}

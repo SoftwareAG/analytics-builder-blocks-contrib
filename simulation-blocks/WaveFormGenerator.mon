@@ -1,0 +1,110 @@
+package com.softwareag.simulation;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+
+event WaveFormGenerator_$Parameters {
+	
+	
+	/**
+	 * Generator type.
+	 * 
+	 * Select the type of generator to use
+	 */
+	string type;
+	
+	/** Sine */
+	constant string type_sine := "sine";
+	/** Cosine */
+	constant string type_cosine := "cosine";
+	/** Tangent */
+	constant string type_tangent := "tangent";
+	/** Square */
+	constant string type_square := "square";
+	/** Triangle */
+	constant string type_triangle := "triangle";
+	/** Sawtooth */
+	constant string type_sawtooth := "sawtooth";
+	
+	/**
+	 * Frequency (hz).
+	 * 
+	 * The frequency of the generated wave form.
+	 **/
+	float frequency;
+
+	/**
+	 * Amplitude.
+	 * 
+	 * The amplitude of the generated wave form.
+	 **/
+	float amplitude;
+	
+}
+
+/**
+* Waveform Generator.
+*
+* Create a signal based on a defined wave form. The generated signal will be an 
+* exact replication of the selected wave form. 
+
+* The block supports sine, cosine, tangent, triangle, square and sawtooth waves.
+* The block is triggered by a pulse signal and the calculation is based on the 
+* model time. Thus the interval in which this block is triggered only determines
+* the resolution of the produced wave. 
+*
+* @$blockCategory Calculations
+* @$derivedName $type
+*/
+event WaveFormGenerator {
+			
+	BlockBase $base;
+	WaveFormGenerator_$Parameters $parameters;
+	
+	/**
+	 * @param $input_trigger The trigger to generate an output.
+	 *
+	 * @$inputName trigger Trigger.
+	 */
+	 action $process(Activation $activation, boolean $input_trigger) {
+		float t := $base.getModelTime();
+		 if($parameters.type = WaveFormGenerator_$Parameters.type_cosine) {
+	        $setOutput_output($activation, $parameters.amplitude * (t * float.PI * $parameters.frequency).cos());
+		} else if($parameters.type = WaveFormGenerator_$Parameters.type_sine) {
+	        $setOutput_output($activation, $parameters.amplitude * (t * float.PI * $parameters.frequency).sin());
+		} else if($parameters.type = WaveFormGenerator_$Parameters.type_tangent) {
+	        $setOutput_output($activation, $parameters.amplitude * (t * float.PI * $parameters.frequency).tan());
+		} else if($parameters.type = WaveFormGenerator_$Parameters.type_square) {
+	        $setOutput_output($activation, $parameters.amplitude * sgn((t * float.PI * $parameters.frequency).sin()));
+		} else if($parameters.type = WaveFormGenerator_$Parameters.type_triangle) {
+			float x := t*$parameters.frequency;
+			$setOutput_output($activation, $parameters.amplitude * 2.0 * (x - (x+0.5).floor().toFloat()).abs());
+		} else if($parameters.type = WaveFormGenerator_$Parameters.type_sawtooth) {
+			float x := t*$parameters.frequency;
+			$setOutput_output($activation, $parameters.amplitude * 2.0 * (x - (x+0.5).floor().toFloat()));
+		} 
+    }
+
+	 action sinoid(float x, float h) returns float {
+		 return 1.0/h * (h*x).sin();
+	 }
+	 
+	 action sgn(float f) returns float {
+		 if(f<0.0) {
+			 return -1.0;
+		 } else if(f>0.0) {
+			 return 1.0;
+		 } else {
+			 return 0.0;
+		 }
+	 }
+	 
+	/**
+	 * Output.
+	 *
+	 * The value of the wave at the current time.
+	 */
+	action<Activation, float> $setOutput_output;
+
+
+}
