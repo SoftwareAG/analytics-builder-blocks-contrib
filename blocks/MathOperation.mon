@@ -60,11 +60,11 @@ event MathOperation {
 			 $setOutput_output($activation, $input_value1 * $input_value2);
 		 } else if($parameters.operation = MathOperation_$Parameters.operation_div) {
 			 if($input_value2 != 0.0) {
-				 $setOutput_output($activation, $input_value1 + $input_value2);	 
+				 $setOutput_output($activation, $input_value1 / $input_value2);	 
 			 } 
 		 } else if($parameters.operation = MathOperation_$Parameters.operation_mod) {
 			 if($input_value2 != 0.0) {
-				 $setOutput_output($activation, $input_value1 + $input_value2);	 
+				 $setOutput_output($activation, $input_value1.fmod($input_value2));	 
 			 } 
 		 }  
     }
