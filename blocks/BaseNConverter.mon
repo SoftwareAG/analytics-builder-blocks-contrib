@@ -1,0 +1,108 @@
+package apamax.analyticsbuilder;
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+using com.apama.exceptions.Exception;
+
+event BaseNConverter_$Parameters {
+	/**
+	 * Number Base
+	 *
+	 * Which number base to use, 2-36.
+	 */
+	integer base;
+	
+	/** Binary (base 2) */
+	constant integer base_binary := 2;
+	/** Octal (base 8) */
+	constant integer base_octal := 8;
+	/** Hexadecimal (base 16) */
+	constant integer base_hexadecimal := 16;
+	
+	constant integer $DEFAULT_base := 8;
+	/**
+	 * Extract a bit.
+	 *
+	 * Extract a bit from the numeric value we parse.
+	 */
+	optional<integer> extractBit;
+	
+	action $validate() {
+		ifpresent extractBit {
+			if extractBit <= 0 {
+				throw Exception("Invalid", "Cannot extract a negative or zero bit value");
+			}
+		}
+	}
+}
+
+event BaseNConverter_$State {
+	boolean prevBitValue;
+}
+
+/**
+* Parse numbers.
+*
+* Converts a string to a numeric output, where the string is of a specified number base, from 2 to 36.
+*
+* @$blockCategory Calculations
+*/
+event BaseNConverter {
+	BlockBase $base;
+	BaseNConverter_$Parameters $parameters;
+
+	static action convert(string input, integer base) returns integer {
+		integer result := 0;
+		integer offset := 0;
+		input := input.toUpper();
+		string digits := "0123456789ABCDEF";
+		while (offset < input.length()) {
+			string c := input.substring(offset, offset+1);
+			result := result * base;
+			integer digit := digits.find(c);
+			result := result + digit;
+			offset := offset + 1;
+		}
+		return result;
+	}
+
+	/**
+	 * Block processing.
+	 * @param $input_input  String input in base-N.
+	 * @$inputName $input_input Input.
+	 */	
+    action $process(Activation $activation, BaseNConverter_$State $blockState, string $input_input) {
+    	integer result := convert($input_input, $parameters.base);
+    	$setOutput_numericConversion($activation, result.toFloat());
+		ifpresent $parameters.extractBit as extractBit {
+			boolean bitValue := (result and 1 << (extractBit-1)) != 0;
+			$setOutput_bitValue($activation, bitValue);
+			if $blockState.prevBitValue != bitValue {
+				$setOutput_changed($activation, true);
+			}
+			$blockState.prevBitValue := bitValue;
+
+		}
+
+    }
+
+	 /**
+	 * Converted number.
+	 *
+	 * Numeric output.
+	 */
+    action<Activation, float> $setOutput_numericConversion;
+    /** 
+	 * Extracted bit.
+	 *
+	 * Bit value extracted if Extract Bit parameter specified.
+	 */
+	action<Activation, boolean> $setOutput_bitValue;
+	/** 
+	 * Bit value changed.
+	 *
+	 * Bit value has changed.
+	 */
+	action<Activation, boolean> $setOutput_changed;
+	
+	constant string $OUTPUT_TYPE_changed := "pulse";
+}
