@@ -1,0 +1,196 @@
+/*
+ * $Copyright (c) 2020 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
+ * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Software AG
+ */
+package apamax.analyticsbuilder.blocks.simulation;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Value;
+using apama.analyticsbuilder.Activation;
+using apama.analyticsbuilder.TimerParams;
+
+event ProcessControl_$Parameters {
+	
+	/**
+	 * Step #1 Duration (s).
+	 * 
+	 * The number of seconds step #1 should be active
+	 **/
+	float step1Duration;
+
+	/**
+	 * Step #2 Duration (s).
+	 * 
+	 * The number of seconds step #2 should be active
+	 **/
+	optional<float> step2Duration;
+
+	/**
+	 * Step #3 Duration (s).
+	 * 
+	 * The number of seconds step #3 should be active
+	 **/
+	optional<float> step3Duration;
+
+	/**
+	 * Step #4 Duration (s).
+	 * 
+	 * The number of seconds step #4 should be active
+	 **/
+	optional<float> step4Duration;
+
+	/**
+	 * Step #5 Duration (s).
+	 * 
+	 * The number of seconds step #5 should be active
+	 **/
+	optional<float> step5Duration;
+
+}
+
+event TimerState {
+	integer currentStep;
+}
+
+/**
+* Process Control.
+*
+* Control a timed process.
+*
+* Up to five steps with an execution in a process can be modelled. The outputs 
+* of the block represent which of the steps is currently active. Only the 
+* output for the active step is true and all other outputs are false. When
+* a step completes the next step becomes active and all outputs will be updated 
+* with the new state. After the last step, the process starts with the first 
+* step again. The first step with no duration configured marks the end of the 
+* process.
+*
+* @$blockCategory Flow Manipulation
+*/
+event ProcessControl {
+			
+	BlockBase $base;
+	ProcessControl_$Parameters $parameters;
+	
+	action $init() {
+		TimerParams tp := TimerParams.relative(0.1).withPayload(TimerState(0));			
+		any _ := $base.createTimerWith(tp);			
+	}	
+	
+	action $timerTriggered(Activation $activation, any $payload) {
+		TimerState ts := <TimerState> $payload;
+		integer nextStep := determineNextStep(ts.currentStep);
+		TimerParams tp := TimerParams.relative(lookupDuration(nextStep)).withPayload(TimerState(nextStep));			
+		any _ := $base.createTimerWith(tp);			
+
+		setOutputs($activation, nextStep);
+	}
+	
+	action setOutputs(Activation $activation, integer nextStep) {
+		if(nextStep=1) {
+			$setOutput_step1Enabled($activation, true);
+		} else {
+			$setOutput_step1Enabled($activation, false);
+		}
+		
+		if (nextStep=2) {
+			$setOutput_step2Enabled($activation, true);
+		} else  {
+			$setOutput_step2Enabled($activation, false);
+		}
+		
+		if (nextStep=3) {
+			$setOutput_step3Enabled($activation, true);
+		} else {
+			$setOutput_step3Enabled($activation, false);
+		}
+		
+		if (nextStep=4) {
+			$setOutput_step4Enabled($activation, true);
+		} else {
+			$setOutput_step4Enabled($activation, false);
+		} 
+		
+		if (nextStep=5) {
+			$setOutput_step5Enabled($activation, true);
+		} else {
+			$setOutput_step5Enabled($activation, false);
+		}
+		
+	}
+	
+	action lookupDuration(integer nextStep) returns float {
+		if (nextStep=2) {
+			return $parameters.step2Duration.getOrThrow();
+		} else if (nextStep=3) {
+			return $parameters.step3Duration.getOrThrow();
+		} else if (nextStep=4) {
+			return $parameters.step4Duration.getOrThrow();
+		} else if (nextStep=5) {
+			return $parameters.step5Duration.getOrThrow();
+		}
+		return $parameters.step1Duration;
+	}
+	
+	action determineNextStep(integer c) returns integer {
+		if(c=1) {
+			ifpresent $parameters.step2Duration as d {
+				return 2;
+			}
+			return 1;
+		} else if(c=2) {
+			ifpresent $parameters.step3Duration as d {
+				return 3;
+			}
+			return 1;			
+		} else if(c=3) {
+			ifpresent $parameters.step4Duration as d {
+				return 4;
+			}
+			return 1;
+		} else if(c=4) {
+			ifpresent $parameters.step5Duration as d {
+				return 5;
+			}
+			return 1;
+		} else {
+			return 1;
+		} 
+	}
+	
+	/**
+	 * Step #1 enabled.
+	 *
+	 * True if step #1 is enabled, otherwise false.
+	 */
+	action<Activation, boolean> $setOutput_step1Enabled;
+
+	/**
+	 * Step #2 enabled.
+	 *
+	 * True if step #2 is enabled, otherwise false.
+	 */
+	action<Activation, boolean> $setOutput_step2Enabled;
+
+	/**
+	 * Step #3 enabled.
+	 *
+	 * True if step #3 is enabled, otherwise false.
+	 */
+	action<Activation, boolean> $setOutput_step3Enabled;
+
+	/**
+	 * Step #4 enabled.
+	 *
+	 * True if step #4 is enabled, otherwise false.
+	 */
+	action<Activation, boolean> $setOutput_step4Enabled;
+
+	/**
+	 * Step #5 enabled.
+	 *
+	 * True if step #5 is enabled, otherwise false.
+	 */
+	action<Activation, boolean> $setOutput_step5Enabled;
+
+}

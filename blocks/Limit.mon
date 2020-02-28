@@ -1,0 +1,68 @@
+/*
+ * $Copyright (c) 2020 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
+ * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Software AG
+ */
+package apamax.analyticsbuilder.blocks;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+
+event Limit_$Parameters {
+	
+	/**
+	 * Upper Limit.
+	 * 
+	 * The upper limit for inputs. Any input above this value will be reduced to the upper limit.
+	 **/
+	optional<float> upper;
+	
+	/**
+	 * Lower Limit.
+	 * 
+	 * The lower limit for inputs. Any input below this value will be reduced to the lower limit.
+	 **/
+	optional<float> lower;
+
+}
+
+/**
+ * Limit.
+ *
+ * Limit inputs to optional lower and upper limits. If neither is provided, no limiting takes place.
+ *
+ * @$blockCategory Calculations
+ */
+event Limit {
+
+	BlockBase $base;
+	Limit_$Parameters $parameters;
+
+	/**
+	 * @param $input_value The input value.
+	 *
+	 * @$inputName value Value
+	 */
+	 action $process(Activation $activation, float $input_value) {
+		 float o := $input_value;
+		 ifpresent $parameters.lower as l {
+			if($input_value < l) {
+				o := l;
+			}
+		 }
+		 ifpresent $parameters.upper as u {
+				if($input_value > u) {
+					o := u;
+				}
+			 }
+			 
+        $setOutput_output($activation, o);
+    }
+
+	 /**
+	 * Output.
+	 *
+	 * The limited output value.
+	 */	 
+	action<Activation, float> $setOutput_output;
+
+}

@@ -1,0 +1,79 @@
+/*
+ * $Copyright (c) 2020 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
+ * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Software AG
+ */
+package apamax.analyticsbuilder.blocks;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+
+event MathOperation_$Parameters {
+	
+	 /**
+	 * Operation.
+	 * 
+	 * The mathematical operation to perform.
+	 **/
+	string operation;
+	
+	/** Addition */
+	constant string operation_add := "add";
+	/** Substraction */
+	constant string operation_sub := "substraction";
+	/** Multiplication */
+	constant string operation_mul := "multiplication";
+	/** Division */
+	constant string operation_div := "division";
+	/** Modulo */
+	constant string operation_mod := "modulo";
+
+	
+}
+
+/**
+ * Mathematical Operation.
+ *
+ * Combine two inputs using a mathematical operation.
+ * Supported operations are addition, substraction, multiplication, divison, and modulo. 
+ *
+ * @$blockCategory Calculations
+ * @$derivedName $operation
+ */
+event MathOperation {
+
+	BlockBase $base;
+	MathOperation_$Parameters $parameters;
+
+	/**
+	 * @param $input_value1 The first input value.
+	 * @param $input_value2 The second input value.
+	 *
+	 * @$inputName value1 Value1
+	 * @$inputName value2 Value2	
+	 */
+	 action $process(Activation $activation, float $input_value1, float $input_value2) {
+		 if($parameters.operation = MathOperation_$Parameters.operation_add) {
+			 $setOutput_output($activation, $input_value1 + $input_value2);
+		 } else if($parameters.operation = MathOperation_$Parameters.operation_sub) {
+			 $setOutput_output($activation, $input_value1 - $input_value2);
+		 } else if($parameters.operation = MathOperation_$Parameters.operation_mul) {
+			 $setOutput_output($activation, $input_value1 * $input_value2);
+		 } else if($parameters.operation = MathOperation_$Parameters.operation_div) {
+			 if($input_value2 != 0.0) {
+				 $setOutput_output($activation, $input_value1 / $input_value2);	 
+			 } 
+		 } else if($parameters.operation = MathOperation_$Parameters.operation_mod) {
+			 if($input_value2 != 0.0) {
+				 $setOutput_output($activation, $input_value1.fmod($input_value2));	 
+			 } 
+		 }  
+    }
+
+    /**
+	 * Result.
+	 *
+	 * The result of the mathematical operation.
+	 */
+	action<Activation, float> $setOutput_output;
+
+}

@@ -1,0 +1,51 @@
+/*
+ * $Copyright (c) 2020 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
+ * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Software AG
+ */
+package apamax.analyticsbuilder.blocks.simulation;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+
+event Constant_$Parameters {
+	
+	/**
+	 * Constant.
+	 * 
+	 * The constant value this block should produce.
+	 **/
+	float const;
+	
+}
+
+/**
+* Constant.
+*
+* Create a signal with a constant value.
+*
+* @$blockCategory Calculations
+* @$derivedName $const
+*/
+event Constant {
+			
+	BlockBase $base;
+	Constant_$Parameters $parameters;
+	
+	/**
+	 * @param $input_trigger The trigger to generate an output.
+	 *
+	 * @$inputName trigger Trigger
+	 */
+	 action $process(Activation $activation, boolean $input_trigger) {
+		 $setOutput_output($activation, $parameters.const);
+	 }
+	 
+	/**
+	 * Constant.
+	 *
+	 * The constant output value.
+	 */
+	action<Activation, float> $setOutput_output;
+
+
+}

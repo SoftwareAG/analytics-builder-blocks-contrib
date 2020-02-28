@@ -1,0 +1,100 @@
+/*
+ * $Copyright (c) 2020 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
+ * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Software AG
+ */
+package apamax.analyticsbuilder.blocks.simulation;
+
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+using apama.analyticsbuilder.Value;
+using apama.analyticsbuilder.TimerParams;
+using apama.analyticsbuilder.L10N;
+using com.apama.cumulocity.ManagedObject;
+using com.apama.exceptions.Exception;
+using apama.analyticsbuilder.Promise;
+using apama.analyticsbuilder.cumulocity.inventory.InventoryLookup;
+using apama.analyticsbuilder.cumulocity.inventory.InputHelper;
+
+
+event IntervalPulseGenerator_$Parameters {
+	
+	/**
+	 * Device.
+	 *
+	 * The device for which a measurement is produced.
+	 *
+	 * The model editor uses the current device. This is mapped internally to the inventory identifier.
+	 * @$semanticType c8y_deviceId
+	 */
+	string deviceId;
+
+	/**
+	 * Interval (s).
+	 *
+	 * The interval in seconds in which this block should fire.
+	 *
+	 */
+	float interval;
+	
+	action $validate() {
+		if(interval<=0.0) {
+			throw Exception("Interval should be > 0.0", "IllegalArgumentException");
+		}
+	}
+
+}
+
+	
+/**
+* Interval Pulse Generator.
+*
+* Generates a pulse in a configurable interval.
+*
+* @$blockCategory Input
+* @$blockType c8y_Input
+*/
+event IntervalPulseGenerator {
+			
+	BlockBase $base;
+	IntervalPulseGenerator_$Parameters $parameters;
+
+	/**All the devices for which block will be listening. Set by reflection by InputHelper.*/
+	sequence<string> devices;
+	
+	/**Flag to identify given device identifier is a group or not. Set by reflection by InputHelper.*/
+	boolean isGroup;
+	
+	/**Flag to identify given device identifier is a broadcast device or not. Set by reflection by InputHelper.*/
+	boolean isBroadcastDevice;
+
+	action $validate(dictionary<string, any> $modelScopeParameters) returns Promise {
+		InputHelper ihelper := InputHelper.forBlock(self, $modelScopeParameters);
+		ihelper.setInput($parameters.deviceId, ManagedObject.getName(), new dictionary<string, any>);
+		return InventoryLookup.lookup($parameters.deviceId).andThen(ihelper.declareInput);
+	}
+
+	action throwNoDevices(string nameOrId) {
+		throw L10N.getLocalizedException("sample_blk_apamax.analyticsbuilder.samples.DeviceLocationInput_no_devices", [<any> nameOrId]);
+	}
+	
+	action $init() {
+		TimerParams tp := TimerParams.recurring($parameters.interval);
+		any _ := $base.createTimerWith(tp);
+	}
+	
+	action $timerTriggered(Activation $activation, any $payload) {
+		$setOutput_pulse($activation, Value(true, $base.getModelTime(), new dictionary<string, any>));
+	}
+
+	/**
+	 * Pulse.
+	 *
+	 * The generated pulse.
+	 */
+	action<Activation,Value> $setOutput_pulse;	
+	
+	constant string  $OUTPUT_TYPE_pulse := "pulse";
+
+	
+}

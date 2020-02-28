@@ -1,0 +1,45 @@
+/*
+ * $Copyright (c) 2020 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
+ * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Software AG
+ */
+package apamax.analyticsbuilder.blocks;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+
+event Offset_$Parameters {
+	
+	
+	/**
+	 * Offset.
+	 * 
+	 * The amount by which inputs should be offset.
+	 **/
+	float offset;
+}
+
+/**
+ * Offset.
+ *
+ * Add a configurable offset to the supplied value.
+ *
+ * @$blockCategory Calculations
+ * @$derivedName Offset $offset
+ */
+event Offset {
+
+	BlockBase $base;
+	Offset_$Parameters $parameters;
+
+	/**
+	 * @param $input_value The input value.
+	 *
+	 * @$inputName value Value
+	 */
+	 action $process(Activation $activation, float $input_value) {
+        $setOutput_output($activation, $input_value + $parameters.offset);
+    }
+
+	action<Activation, float> $setOutput_output;
+
+}
