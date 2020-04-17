@@ -1,0 +1,73 @@
+package apamax.analyticsbuilder.customblocks;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+
+
+event SumLast_$Parameters {
+	/**
+    * Absolute.
+    *
+    * Will ignore signed values and always add the absolute value.
+    */
+    boolean absolute;
+    constant boolean $DEFAULT_absolute := false;
+}
+
+event SumLast_$State {
+    float sum;
+    float lastValue;
+    
+}
+
+/**
+* SumLast.
+*
+* Add the last value to the current.
+* @$blockCategory Calculations
+* @$derivedName IgnoreSign $ignoreSign
+*/
+event SumLast {
+    BlockBase $base;
+    SumLast_$Parameters $parameters;
+    
+    /** Declare the reset input to be pulse type */
+	constant string $INPUT_TYPE_reset := "pulse";
+	
+    /**
+    * @param $input_value The input value.
+    * @param $input_reset Will reset the internal sum value to zero.
+    * @$inputName value Value 
+    */
+    action $process(Activation $activation, float $input_value, boolean $input_reset, SumLast_$State $blockState) {
+    	
+    	if($input_reset) {
+			$blockState.sum := 0.0;
+		} else{
+			
+	    	if ($parameters.absolute){
+	    		$blockState.sum := $blockState.sum + $input_value.abs();
+	    	}else{
+	    		$blockState.sum := $blockState.sum + $input_value;
+	    	}
+		}
+
+    	$setOutput_sum($activation, $blockState.sum );
+    	$setOutput_lastValue($activation,  $blockState.lastValue);
+    	$blockState.lastValue := $input_value;
+
+    }
+    /**
+    * Sum
+    *
+    * The sum value.
+    */
+    action<Activation, float> $setOutput_sum;
+    
+    /**
+    * Last Value
+    *
+    * The previously received Value.
+    */
+    action<Activation, float> $setOutput_lastValue;
+}
