@@ -23,7 +23,7 @@ For example:
 git clone https://github.com/SoftwareAG/apama-analytics-builder-block-sdk.git
 git clone https://github.com/SoftwareAG/analytics-builder-blocks-contrib.git
 ./apama-analytics-builder-block-sdk/analytics_builder build extension \
-       --input analytics-builder-blocks-contrib/blocks/  --name contrib-blocks\
+      --input analytics-builder-blocks-contrib/blocks/  --name contrib-blocks\
       --cumulocity_url https://$TENANT/ \
       --username $USERNAME --password $PASSWORD --restart
 ```
