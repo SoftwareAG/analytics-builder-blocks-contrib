@@ -12,10 +12,9 @@ using apama.analyticsbuilder.TimerParams;
 using com.apama.exceptions.Exception;
 using apama.analyticsbuilder.L10N;
 using apama.analyticsbuilder.Promise;
-/*using apama.analyticsbuilder.cumulocity.inventory.InventoryLookup;
+using apama.analyticsbuilder.cumulocity.inventory.InventoryLookup;
 using apama.analyticsbuilder.cumulocity.inventory.InventoryLookupResult;
 using apama.analyticsbuilder.cumulocity.inventory.InputHelper;
-*/
 using apama.analyticsbuilder.Partition_Broadcast;
 using apama.analyticsbuilder.Configuration;
 using apama.analyticsbuilder.ConfigurationProperty;
