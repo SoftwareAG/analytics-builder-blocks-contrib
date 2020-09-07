@@ -1,0 +1,226 @@
+﻿/*
+ * $Copyright (c) 2018-2020 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
+ * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Software AG
+ */
+
+package apamax.analyticskit.blocks.cumulocity;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+using apama.analyticsbuilder.Value;
+using apama.analyticsbuilder.TimerParams;
+using apama.analyticsbuilder.L10N;
+using apama.analyticsbuilder.ABConstants;
+using apama.analyticsbuilder.cumulocity.MeasurementFragment;
+using com.apama.cumulocity.Measurement;
+using com.apama.exceptions.Exception;
+
+using apama.analyticsbuilder.Promise;
+using apama.analyticsbuilder.cumulocity.inventory.InventoryLookup;
+using apama.analyticsbuilder.cumulocity.inventory.InputHelper;
+using apama.analyticsbuilder.Partition_Broadcast;
+
+/**
+ * Parameters
+ * The parameters for the Input Block. 
+ */
+event DeviceMeasurementInput_$Parameters{
+	/**
+	 * Device or Device Group.
+	 *
+	 * The device or device group from which the measurement has been received.
+	 *
+	 * The model editor uses the current device or asset name. This is mapped internally to the inventory identifier.
+	 * @$semanticType c8y_deviceOrGroupId
+	 */
+	string deviceId;
+
+	/**
+	 * Fragment and Series.
+	 *
+	 * The fragment for which the block will listen.
+	 *
+	 * This only shows fragments and series for measurements associated with the object (device or group) selected.
+	 * Any measurements on a device within a group will only be shown when a device is selected (unless there are
+	 * measurements with the group as the source).
+	 *
+	 * @$semanticType c8y_fragmentSeries_KPI_supportedMeasurements_DataPoints
+	 */
+	string fragmentSeries;
+	
+	/**
+	 * Ignore Timestamp.
+	 *
+	 * If selected, the timestamp of the incoming measurement is ignored. Note: when running in simulation mode, 
+	 * because historical input data is used, timestamps are not ignored.
+	 */
+	boolean ignoreTimestamp;
+	
+	/**Default value for ignore timestamp.*/
+	constant boolean $DEFAULT_ignoreTimestamp := false;
+
+	/** Validate that values for all parameters have been provided. */
+	action $validate() {
+		BlockBase.throwsOnEmpty(deviceId, "deviceId", self);
+		sequence<string> fragSeries := ".".split(fragmentSeries);
+		if fragSeries.size() != 2 or fragSeries[0] = "" or fragSeries[1] = "" {
+			throw L10N.getLocalizedException("blk_apama.analyticskit.blocks.cumulocity.DeviceMeasurementInput_expected_frag.series", [<any> fragmentSeries]);
+		}
+	}
+	
+}
+
+
+
+/**
+ * Measurement Input.
+ *
+ * Receives <tt>Measurement</tt> objects from Cumulocity IoT and reorders them based on the timestamp.
+ *
+ * If the Ignore Timestamp parameter is set, the block ignores the timestamp of the measurement and processes the
+ * measurements as they are received, otherwise it drops old measurements.
+ *
+ * If using a group for input, select a device within the group to select the fragment and series, and then change
+ * to the desired group.
+ *
+ * Note: when running in simulation mode, because historical input data is used, timestamps are not ignored.
+ *
+ * @$blockCategory Input
+ * @$blockType c8y_Input
+ * @$derivedName $fragmentSeries Measurement
+ * @$titleIsDerived true
+ */
+event DeviceMeasurementInput{
+	
+	BlockBase $base;
+	
+	/**The parameters for the block. */
+	DeviceMeasurementInput_$Parameters $parameters;
+	
+	/**All the devices for which block will be listening. @private */
+	sequence<string> devices; // set by reflection in InputHelper
+	string fragment;
+	string series;
+	boolean isGroup; // set by reflection in InputHelper
+	boolean isBroadcastDevice; // set by reflection in InputHelper
+
+	boolean ignoreTimestamp; // always false in simulation mode, else $parameters.ignoreTimestamp
+
+	// latest timestamp assigned to input events - iff ignoreTimestamp set. While this is state, we only use it as a tiebreaker
+	// if we receive events at the same model time.  We don't care about it being independent across different partitions,
+	// nor persisted across correlator instances.
+	float timeValue;
+	
+
+	action $validate(dictionary<string, any> $modelScopeParameters) returns Promise {
+		if $modelScopeParameters.getOrDefault(ABConstants.MODE_IDENTIFIER).valueToString() = ABConstants.MODE_SIMULATION {
+			ignoreTimestamp := false;
+		} else {
+			ignoreTimestamp := $parameters.ignoreTimestamp;
+		}
+		sequence<string> fragSeries := ".".split($parameters.fragmentSeries);
+		fragment := fragSeries[0];
+		series := fragSeries[1];
+
+		InputHelper ihelper := InputHelper.forBlock(self, $modelScopeParameters);
+		ihelper.setInput($parameters.deviceId, Measurement.getName(), {"fragment":<any>fragment, "series":series});
+
+		return InventoryLookup.lookup($parameters.deviceId).andThen(ihelper.declareInput);
+	}
+
+	action throwNoDevices(string nameOrId) {
+		throw L10N.getLocalizedException("blk_apama.analyticskit.blocks.cumulocity.DeviceMeasurementInput_no_devices", [<any> nameOrId]);
+	}
+
+	action setDevices(sequence<string> devs) {
+		devices := devs;
+	}
+
+	
+	/**
+	 * Method starts listening for the events from Cumulocity IoT 
+	 * and prepares memory store. 
+	 */
+	action $init() {
+		string id;
+		for id in devices{
+			on all MeasurementFragment(source = id, fragment = fragment, series= series) as e{
+				extractMeasurement(e);
+			}
+		}
+	}
+	
+	/**
+	 * Extracts the measurement value from event if it is not too old 
+	 * and creates the timer according to the timestamp of the event.
+	 * @param measurement The incoming Measurement event from Cumulocity IoT.
+	 * @private
+	 */
+	action extractMeasurement(MeasurementFragment measurement) {
+		if not (measurement.params.hasKey(apama.analyticsbuilder.ABConstants.MODEL_NAME_IDENTIFIER)) {
+			try {
+				if not ignoreTimestamp {
+					if measurement.time  < $base.getModelTime()  {
+						$base.droppedEvent(measurement, measurement.time);
+						return;
+					}
+				}
+				Value value := new Value;
+				value.value := measurement.value;
+
+				float timerDelay;
+				if ignoreTimestamp {
+					timeValue := float.max(timeValue, $base.getModelTime()).nextAfter(float.INFINITY);
+					timerDelay := timeValue;
+					value.timestamp := timeValue;
+				}
+				else {
+					timerDelay := measurement.time;
+					value.timestamp := measurement.time;
+				}
+				string k;
+				for k in measurement.params.keys()  {
+					value.properties["measurement_"+k] := measurement.params[k]; 
+				}
+				for k in measurement.measurementValueParams.keys()  {
+					value.properties["value_"+k] := measurement.measurementValueParams[k];
+				}
+				
+				value.properties.add("unit",measurement.unit);
+				TimerParams tp := TimerParams.absolute(timerDelay).withPayload(value);
+				if(isGroup) {
+					tp := tp.withPartition(measurement.source);
+				}
+				else if(isBroadcastDevice) {
+					tp := tp.withPartition(Partition_Broadcast(measurement.source));
+				}
+				any discard := $base.createTimerWith(tp);
+			} catch (Exception e) {
+				log $base.getModelTime().toString()+": Dropping event:"+measurement.toString()+", exception:"+e.toString() at DEBUG;
+				$base.droppedEvent(measurement, measurement.time);
+			}
+		}
+	}
+	
+	/**
+	 * Sets output on the current activation.
+	 * @param $activation The current activation.
+	 * @param value value to be put on the wire.
+	 */
+	action $timerTriggered(Activation $activation, any $payload) {
+		$setOutput_measurementValue($activation, <Value>$payload);
+	}
+	
+	/**
+	 * Value.
+	 *
+	 * The numeric value from the measurement object.
+	 */
+	action<Activation,Value> $setOutput_measurementValue;
+	
+	/**
+	 * Constant specifies the output type the block.
+	 */
+	constant string $OUTPUT_TYPE_measurementValue := "float";
+	
+}
