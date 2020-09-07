@@ -73,7 +73,7 @@ event DeviceMeasurementInput_$Parameters{
 
 
 /**
- * Measurement Input.
+ * Custom Measurement Input.
  *
  * Receives <tt>Measurement</tt> objects from Cumulocity IoT and reorders them based on the timestamp.
  *
@@ -185,6 +185,7 @@ event DeviceMeasurementInput{
 				for k in measurement.measurementValueParams.keys()  {
 					value.properties["value_"+k] := measurement.measurementValueParams[k];
 				}
+				value.properties["timestamp"] := measurement.time;
 				
 				value.properties.add("unit",measurement.unit);
 				TimerParams tp := TimerParams.absolute(timerDelay).withPayload(value);

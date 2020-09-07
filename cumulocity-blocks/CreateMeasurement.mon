@@ -116,10 +116,15 @@ event CreateMeasurement {
 	 * @param $input_send Signals that a new measurement is to be created. If not connected, every new Value input creates a measurement.
 	 * @$inputName value Value
 	 * @$inputName send Send
+	 * @$inputName time Time
 	 */
-	action $process(Activation $activation, dictionary<string,any>$modelScopeParameters, optional<float> $input_value, boolean $input_send) {
+	action $process(Activation $activation, dictionary<string,any>$modelScopeParameters, optional<float> $input_value, boolean $input_send, optional<float> $input_time) {
 		boolean validValue := false;
-		ifpresent $input_value {
+		if $base.getInputCount("time") = 0 {
+			// just use activation's timestamp if not connected:
+			$input_time := $activation.timestamp;
+		}
+		ifpresent $input_value, $input_time {
 			validValue := $input_value.isFinite();
 			if validValue and (createOnEveryValidValue or $input_send) {
 				Measurement m := new Measurement;
@@ -142,7 +147,7 @@ event CreateMeasurement {
 				mv.value := $input_value;
 				ifpresent $parameters.unit as unit { mv.unit := unit; }
 				m.measurements := {$parameters.fragment:{$parameters.series:mv}};
-				m.time := $activation.timestamp;
+				m.time := $input_time;
 				
 				route m;
 				m.params[apama.analyticsbuilder.ABConstants.MODEL_NAME_IDENTIFIER] := $modelScopeParameters.getOrDefault(apama.analyticsbuilder.ABConstants.MODEL_NAME_IDENTIFIER);
