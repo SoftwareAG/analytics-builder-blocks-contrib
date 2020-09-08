@@ -1,0 +1,161 @@
+/*
+ * $Copyright (c) 2018-2019 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
+ * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Software AG
+ */
+package apama.analyticskit.blocks.cumulocity;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.NameValue;
+using apama.analyticsbuilder.Activation;
+using apama.analyticsbuilder.Value;
+using apama.analyticsbuilder.Partition_Broadcast;
+
+using com.apama.cumulocity.Operation;
+using com.apama.exceptions.Exception;
+using apama.analyticsbuilder.cumulocity.inventory.InventoryLookup;
+using apama.analyticsbuilder.cumulocity.inventory.InventoryLookupResult;
+using apama.analyticsbuilder.cumulocity.inventory.OutputHelper;
+using apama.analyticsbuilder.Promise;
+
+/** The parameters for the CreateOperationStaticValue block. */
+event CreateOpcUAWrite_$Parameters {
+	/**
+	 * Device or Trigger Device.
+	 *
+	 * The device (or for models handling groups, Trigger Device) to which the operation is to be sent.
+	 *
+	 * The model editor uses the device name. This is mapped internally to the device identifier.
+	 * @$semanticType c8y_deviceIdOrCurrentDevice
+	 */
+	any deviceId;
+	
+	/** 
+	 * OPC Node id.
+	 * 
+	 * The Node id to write a value to.
+	 * An example for a node id is "ns=2;s=Drives/Power"
+	 */
+	string nodeId;
+	
+	/** 
+	 * Value.
+	 * 
+	 * The value to write. 
+	 */
+	string value;
+	/**
+	 * Description.
+	 *
+	 * The description of the operation to create.
+	*/
+	string description;
+
+	/** Check that all parameters have non-empty values. */
+	action $validate() {
+		switch(deviceId) {
+			case string: { BlockBase.throwsOnEmpty(deviceId, "deviceId", self); }
+			default: {
+				if deviceId = any() or deviceId.getEntry("currentDevice") != <any> true {
+					throw Exception("Expected a device Id or a currentDevice object", "IllegalArgumentException"); // NON-L10N-DEV
+				}
+			}
+		}
+		BlockBase.throwsOnEmpty(nodeId, "nodeId", self);
+		BlockBase.throwsOnEmpty(value, "value", self);
+		BlockBase.throwsOnEmpty(description, "description", self);
+	}
+}
+
+/** 
+ * OPC-UA Write Value Output.
+ * 
+ * Creates a new <tt>OPC-UA Write Operation</tt> object for a specified device or for the current device with a pre-configured
+ * node id and parameters.
+ * 
+ * @$blockCategory Output
+ * @$blockType c8y_Output
+ * @$derivedName OperationOPC $OperationOPC
+ * @$titleIsDerived true
+ */
+event CreateOpcUAWrite {
+	constant string DESCRIPTION := "description";
+	BlockBase $base;
+	/** The parameters for the block. */
+	CreateOpcUAWrite_$Parameters $parameters;
+	/** Sends to the 'current' device from the activation's partition: */
+	boolean currentDevice;
+	boolean isBroadcastDevice; // set by reflection in OutputHelper
+	/** The current deviceId, if currentDevice is false */
+	string deviceId;
+	action $validate() returns Promise {
+		switch($parameters.deviceId as dev) {
+			case string: {
+				deviceId := dev;	
+			}
+			default: {
+				currentDevice := true;
+			}
+		}
+		
+		OutputHelper helper := OutputHelper.forBlock(self);
+		helper.setAsyncOutput($parameters.deviceId, Operation.getName());
+		
+		return InventoryLookup.lookup($parameters.deviceId).andThen(helper.declareOutput);
+	}
+	
+	action $init() {
+		switch($parameters.deviceId as dev) {
+			case string: { deviceId := dev; }
+			default: { currentDevice := true; }
+		}
+	}
+	
+	/**
+	 * Create and send operation to the device.
+	 * @param $activation The current activation.
+	 * @param $input_createOperation Creates an operation when a signal is received.
+	 * @$inputName createOperation Create Operation
+	 */
+	action $process(Activation $activation, boolean $input_createOperation, dictionary<string, any> $modelScopeParameters) {
+		if $input_createOperation {
+			string modelNameIdentifier := apama.analyticsbuilder.ABConstants.MODEL_NAME_IDENTIFIER;
+			any modelName := new any;
+			if $modelScopeParameters.hasKey(modelNameIdentifier) {
+				modelName := $modelScopeParameters[modelNameIdentifier];
+			}
+			
+			Operation op := new Operation;
+	        string name := "CreateOpcUAWrite";
+			op.source := deviceId;
+	        op.status := "PENDING";
+	 
+	        dictionary<string,any> value := {"value":any(string,$parameters.value)};
+	        dictionary<string,any> myParam := {$parameters.nodeId: value };
+	        dictionary<string,any> myValues := {"values": myParam };
+	        dictionary<string,any> commandWrite := {"c8y_ua_command_WriteValue":myValues};
+	 
+	        op.params := commandWrite;
+	        op.params.add("deviceID",deviceId);
+	        op.params.add("description",$parameters.description);
+
+			
+			switch($activation.partition as part) {
+				case Partition_Broadcast: {
+					if not isBroadcastDevice { return; }
+				}
+				case string: {
+					if currentDevice { op.source := part; }
+				}
+				default: {
+					if currentDevice { return; }
+				}
+			}
+
+			send op to Operation.CHANNEL;
+			$base.profile(BlockBase.PROFILE_OUTPUT);
+		}
+	}
+	
+	constant string $INPUT_TYPE_createOperation := "pulse";
+
+}
