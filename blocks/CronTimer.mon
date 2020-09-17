@@ -1,0 +1,97 @@
+/*
+ * $Copyright (c) 2020 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
+ * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Software AG
+ */
+package apamax.analyticsbuilder.blocks;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+using apama.analyticsbuilder.TimerHandle;
+using apama.analyticsbuilder.TimerParams;
+using apama.analyticsbuilder.Partition_Broadcast;
+using com.apama.exceptions.Exception;
+
+
+event CronTimer_$Parameters {
+	/** Seconds
+	 *
+	 * Which second to trigger.  Can be of the form:
+	 * <ul>
+	 * <li> 1,2,6  -  trigger at those times
+	 * <li> * / 5  - trigger every fifth second
+	 * <li> *  - trigger every second
+	 * </ul>
+	 * Range is 0-59.
+	 */
+	string seconds;
+	constant string $DEFAULT_seconds := "0";
+	/** Minutes
+	 *
+	 * Which minute offset to trigger.  See seconds for the valid values - range is 0 to 59.
+	 */
+	string minutes;
+	constant string $DEFAULT_minutes := "*";
+	/** Hour
+	 *
+	 * Which hour offset to trigger.  See seconds for the valid values - range is 0 to 23.
+	 */
+	string hours;
+	constant string $DEFAULT_hours := "*";
+	/** Day of month
+	 *
+	 * Which day of month to trigger.  See seconds for the valid values - range is 1 to 31.
+	 */
+	string daysOfMonth;
+	constant string $DEFAULT_daysOfMonth := "*";
+	/** Months
+	 *
+	 * Which months to trigger.  See seconds for the valid values - range is 1 to 12.
+	 */
+	string months;
+	constant string $DEFAULT_months := "*";
+
+	/** Days of week
+	 *
+	 * Which days of week to trigger.  See seconds for the valid values - range is 0 (Sunday) to 6  (Saturday)
+	 */
+	string daysOfWeek;
+	constant string $DEFAULT_daysOfWeek := "*";
+}
+
+
+/**
+ * Periodic timer.
+ *
+ * Generates an output periodically.
+ *
+ * @$blockCategory Utilities
+ */
+event CronTimer {
+
+	BlockBase $base;
+	CronTimer_$Parameters $parameters;
+
+	action $validate() {
+		float offset := currentTime - $base.getModelTime();
+		if offset > 10.0 {
+			throw Exception("OperationNotSupported", "Sorry, this does not support simulation mode, or maxInputDelay more than 10 seconds");
+		}
+	}
+
+
+	action $init() {
+		float offset := currentTime - $base.getModelTime();
+		Partition_Broadcast broadcast := new Partition_Broadcast;
+		on all at($parameters.minutes, $parameters.hours, $parameters.daysOfMonth, $parameters.months, $parameters.daysOfWeek, $parameters.seconds) {
+			TimerHandle t := $base.createTimerWith(TimerParams.relative(offset).withPartition(broadcast));
+		}
+	}
+	action $timerTriggered(Activation $activation) {
+		$setOutput_tick($activation, true);
+	}
+
+	action<Activation, boolean> $setOutput_tick;
+	constant string $OUTPUT_TYPE_tick := "pulse";
+
+
+}
