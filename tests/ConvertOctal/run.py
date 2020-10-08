@@ -5,7 +5,7 @@ from apamax.analyticsbuilder.basetest import AnalyticsBuilderBaseTest
 class PySysTest(AnalyticsBuilderBaseTest):
     def execute(self):
         correlator = self.startAnalyticsBuilderCorrelator(
-            blockSourceDir=f'{self.project.TEST_SUBJECT_DIR}/blocks')
+            blockSourceDir=f'{self.project.SOURCE}/blocks')
         self.createTestModel('apamax.analyticsbuilder.BaseNConverter')
         self.sendEventStrings(correlator,
                               self.timestamp(1),
