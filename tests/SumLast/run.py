@@ -7,7 +7,7 @@ from apamax.analyticsbuilder.basetest import AnalyticsBuilderBaseTest
 
 class PySysTest(AnalyticsBuilderBaseTest):
 	def execute(self):
-		correlator = self.startAnalyticsBuilderCorrelator(blockSourceDir=f'{self.project.SOURCE}/blocks/')
+		correlator = self.startAnalyticsBuilderCorrelator(blockSourceDir=f'{self.project.SOURCE}/cumulocity-blocks/')
 		modelId = self.createTestModel('apamax.analyticsbuilder.customblocks.SumLast')
 		self.sendEventStrings(
 			correlator,
