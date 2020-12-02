@@ -1,0 +1,176 @@
+
+package apamax.analyticsbuilder.custom;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+using com.apama.json.JSONPlugin;
+using com.apama.exceptions.Exception;
+using com.apama.util.AnyExtractor;
+
+
+/** The parameters for the CSVReader block. */
+event CSVReader_$Parameters{
+
+	/**Defines the column delimitor
+	*
+	* This is a string. Defaut value is ","
+	*/
+	optional<string> colDelimitor;
+
+	/**Defines the line delimitor
+	*
+	* This is a string. Defaut value is "\n"
+	*/
+	optional<string> lineDelimitor;
+
+	/**Defines the fragment which will contain the resulting JSON string array
+	*
+	* This is a string. 
+	*/
+	string fragmentName;
+
+	/**Defines if there is a header in the csv.
+	*
+	* If false then column names will be generated: col1, col2,...
+	* Default value is true.
+	*/
+	optional<boolean> isHeaderProvided;
+}
+
+/**
+* CSVReader
+*
+* Converts a string (CSV format) into a Json array.
+*
+*
+* @$blockCategory Utility
+*/
+event CSVReader {
+
+	/**BlockBase object.
+	*
+	* This is initialized by the framework when the block is required for a model.
+	*/
+	BlockBase $base;
+
+	/** Parameters, filled in by the framework. */
+	CSVReader_$Parameters $parameters;
+
+	string lineDelimitor;
+	string colDelimitor;
+	string fragmentName;
+	boolean isHeaderProvided;
+
+	/** Called once at block start up. */
+	action $init() {
+		ifpresent $parameters.lineDelimitor as d
+		{
+			lineDelimitor := d;
+		}
+		else
+		{
+			lineDelimitor := "\n";
+		}
+		ifpresent $parameters.colDelimitor as d
+		{
+			colDelimitor := d;
+		}
+		else
+		{
+			colDelimitor := ",";
+		}
+		ifpresent $parameters.isHeaderProvided as d
+		{
+			isHeaderProvided := d;
+		}
+		else
+		{
+			isHeaderProvided := true;
+		}
+		fragmentName := $parameters.fragmentName;
+	}
+
+	/**
+	* This action receives the input values and contains the logic of the block. 
+	*
+	* It takes a string in a CSV format and convert it into a  JSON string array  
+	* Eg: 
+	* input = "field1,field2,field3 | 11,12,13 | 21,22,23 | 31,32,33"
+	* output = "{"infile": [{"field1": 11,"field2": 12,"field3": 13},{"field1": 21,"field2": 22,"field3": 23},{"field1": 31,"field2": 32,"field3": 33}]}";
+	*  
+	* @param $activation The current activation, contextual information required when generating a block output. Blocks should only use the
+	* <tt>Activation</tt> object passed to them from the framework, never creating their own or holding on to an <tt>Activation</tt> object.
+	* @param $input_value input to the block.
+	*
+	* @$inputName value String
+	*/
+	action $process(Activation $activation, string $input_csv) {
+		try{
+			dictionary<string, sequence<dictionary<string,any> > > jsonStringArray := new dictionary<string, sequence<dictionary<string,any> > >;
+			sequence<dictionary<string,any> > jsonSeq := new sequence<dictionary<string,any> >;
+			sequence<string> lines := lineDelimitor.split($input_csv);
+			//lines = ["field1,field2,field3","11,12,13",...]
+
+			string line;
+			sequence<string> headers := new sequence<string>;
+			boolean headerSet := false;
+			for line in lines {
+				sequence<string> cells := colDelimitor.split(line);
+				//cells = ["field1","field2","field3"]
+				if not headerSet
+				{
+					if isHeaderProvided {
+						//the first line is the header
+						headers:= cells;
+						headerSet := true;
+						continue;
+					} else {
+						//the first line is not the header so we generate column names
+						integer i:= 1;
+						while i <= cells.size() {
+							headers.append("col"+i.toString());
+							i := i + 1;
+						}
+						headerSet := true;
+					}
+					
+				}
+
+				dictionary<string,any> jsonDico := new dictionary<string, any>;
+				string cell;
+				integer i := 0;
+				for cell in cells{
+					if cell = "true" or cell="false" then {
+						jsonDico.add(headers[i], cell.toBoolean());
+					} else if cell = "0.0" or (cell != "0.0" and cell.toFloat() != 0.0) { //toFloat returns a float if the string is float or 0.0 if not a float. However 0.0 can be the cell content so we need to treat it as float
+						jsonDico.add(headers[i], cell.toFloat());
+					} else if cell = "0" or (cell != "0" and cell.toInteger() != 0){
+						jsonDico.add(headers[i], cell.toInteger());
+					} else {
+						jsonDico.add(headers[i], cell);
+					}
+						
+					i := i +1;
+				}
+				jsonSeq.append(jsonDico);
+			}
+			jsonStringArray.add(fragmentName, jsonSeq);
+
+			
+			$setOutput_jsonOutput($activation, jsonStringArray.toString());	
+		}
+		catch (Exception e){
+			log "Exception while reading the csv: " + e.toStringWithStackTrace() at ERROR;
+		}
+
+
+	}
+
+
+	/**
+	* CSVReader Output
+	*
+	* Resulting json string from parsing the csv
+	*/
+	action<Activation,string> $setOutput_jsonOutput;	// This is initialized by the framework. It sets the output of the block and may trigger any blocks connected to this output.
+}

@@ -1,0 +1,161 @@
+
+package apamax.analyticsbuilder.custom;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+using com.apama.json.JSONPlugin;
+using com.apama.exceptions.Exception;
+using apamax.analyticsbuilder.custom.json.ObjectUtils;
+using apamax.analyticsbuilder.custom.json.ObjectUtilsConfig;
+
+event JSONArray{
+	sequence<dictionary<string,any> >  json; 
+}
+
+/** The parameters for the CSVWriter block. */
+event CSVWriter_$Parameters{
+
+	/**Defines the column delimitor
+	*
+	* This is a string. Defaut value is ","
+	*/
+	optional<string> colDelimitor;
+
+	/**Defines the line delimitor
+	*
+	* This is a string. Defaut value is "\n"
+	*/
+	optional<string> lineDelimitor;
+}
+
+/**
+* CSVWriter
+*
+* Converts a Json array into a CSV (string).
+*
+*
+* @$blockCategory Utility
+*/
+event CSVWriter {
+
+	/**BlockBase object.
+	*
+	* This is initialized by the framework when the block is required for a model.
+	*/
+	BlockBase $base;
+
+	/** Parameters, filled in by the framework. */
+	CSVWriter_$Parameters $parameters;
+
+	string lineDelimitor;
+	string colDelimitor;
+
+	/** Called once at block start up. */
+	action $init() {
+		ifpresent $parameters.lineDelimitor as d
+		{
+			lineDelimitor := d;
+		}
+		else
+		{
+			lineDelimitor := "\n";
+		}
+		ifpresent $parameters.colDelimitor as d
+		{
+			colDelimitor := d;
+		}
+		else
+		{
+			colDelimitor := ",";
+		}
+	}
+
+	/**
+	* This action receives the input values and contains the logic of the block. 
+	*
+	* It takes a JSON string array as input and convert it into a CSV format. 
+	* Eg: input = "{"infile": [{"field1": 11,"field2": 12,"field3": 13},{"field1": 21,"field2": 22,"field3": 23},{"field1": 31,"field2": 32,"field3": 33}]}";
+	*  
+	* @param $activation The current activation, contextual information required when generating a block output. Blocks should only use the
+	* <tt>Activation</tt> object passed to them from the framework, never creating their own or holding on to an <tt>Activation</tt> object.
+	* @param $input_value input to the block.
+	*
+	* @$inputName value String
+	*/
+	action $process(Activation $activation, string $input_value) {
+		try
+		{
+			JSONArray jsonArray := new JSONArray;
+			any parsed := JSONPlugin.fromJSON($input_value);
+			string fragmentName := $input_value.substring($input_value.find("\"")+1,$input_value.find(":")-1);
+			any stringArray := parsed.getEntry(fragmentName);
+			jsonArray.json := <sequence<dictionary<string,any> > > ObjectUtils.populate(jsonArray.json, stringArray,(new ObjectUtilsConfig).setIgnoreMissing(true));
+			//jsonArray.json =  [{"field1":any(integer,11),"field2":any(integer,12),"field3":any(integer,13)},{"field1":any(integer,21),"field2":any(integer,22),"field3":any(integer,23)},{"field1":any(integer,31),"field2":any(integer,32),"field3":any(integer,33)}]
+		
+			boolean isHeaderSet := false;
+			integer nbLines := jsonArray.json.size();
+			dictionary<string, any> csvLine;
+			string CSVOutput := "";
+			for csvLine in jsonArray.json { 
+				//{"field1":any(integer,11),"field2":any(integer,12),"field3":any(integer,13)}
+				string csvLineKey;
+				string csvLineItem;
+				string newCSVLine := "";
+				nbLines := nbLines - 1;
+				if not isHeaderSet
+				{
+					//build the headers
+					for csvLineKey in  csvLine.keys() 
+					{
+						if newCSVLine = "" {
+							newCSVLine := csvLineKey;
+						}else {
+							newCSVLine := newCSVLine + colDelimitor + csvLineKey;
+						}
+					}
+					CSVOutput := CSVOutput + newCSVLine + lineDelimitor;
+					newCSVLine := "";
+					isHeaderSet := true;
+				}
+				//build the lines
+				for csvLineKey in  csvLine.keys() 
+				{			
+					switch (csvLine.getOrDefault(csvLineKey)  as val)
+					{
+						case float: { csvLineItem := val.toString(); }
+						case integer: { csvLineItem := val.toString();}
+						case boolean: { csvLineItem := val.toString();}
+						case string: { csvLineItem := val; }
+						default: 
+						{
+							log "Incorrect value type for the item " + val.toString() + ". Allowed types are float, integer, boolean and string." at ERROR;
+							return;
+						}
+					}
+					if newCSVLine = "" {
+						newCSVLine := csvLineItem;
+					}else {
+						newCSVLine := newCSVLine + colDelimitor + csvLineItem;
+					}
+				}
+				if nbLines = 0 {
+					CSVOutput := CSVOutput + newCSVLine;
+				} else {
+					CSVOutput := CSVOutput + newCSVLine + lineDelimitor;	
+				}
+			}
+			$setOutput_csvOutput($activation, CSVOutput);
+		}
+		catch (Exception e){
+			log "Exception while generating the csv: " + e.toStringWithStackTrace() at ERROR;
+		}
+	}
+
+
+	/**
+	* CSVWriter Output
+	*
+	* Resulting string from parsing the JSON array
+	*/
+	action<Activation,string> $setOutput_csvOutput;	// This is initialized by the framework. It sets the output of the block and may trigger any blocks connected to this output.
+}
