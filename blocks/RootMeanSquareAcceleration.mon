@@ -1,0 +1,118 @@
+
+package apamax.analyticsbuilder.custom;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+using com.apama.json.JSONPlugin;
+using com.apama.exceptions.Exception;
+using com.apama.util.AnyExtractor;
+using apama.analyticsbuilder.L10N;
+using apama.analyticsbuilder.TimerParams;
+
+/** The parameters for the RootMeanSquareAcceleration block. */
+event RootMeanSquareAcceleration_$Parameters{
+
+	/**Defines the low frequency of the bandwidth
+	*
+	* This is a float, must be a finite value
+	*/
+	float frequencyL;
+	
+	/**Defines the high frequency of the bandwidth
+	*
+	* This is a float, must be a finite value
+	*/
+	float frequencyH;
+	
+	/**Defines the Acceleration Spectral Density of the low frequency
+	*
+	* This is a float, must be a finite value
+	*/
+	float ASDL;
+
+	/**Defines the Acceleration Spectral Density of the high frequency
+	*
+	* This is a float, must be a finite value
+	*/
+	float ASDH;
+
+	action $validate() {
+		if  (not frequencyL.isFinite()) {
+			throw L10N.getLocalizedException("fwk_param_finite_frequencyL_value", [BlockBase.getL10N_param("frequencyL",self),frequencyL]);
+		}
+		if  (not frequencyH.isFinite()) {
+			throw L10N.getLocalizedException("fwk_param_finite_frequencyH_value", [BlockBase.getL10N_param("frequencyH",self),frequencyH]);
+		}
+		if  (not ASDL.isFinite()) {
+			throw L10N.getLocalizedException("fwk_param_finite_ASDL_value", [BlockBase.getL10N_param("ASDL",self),ASDL]);
+		}
+		if  (not ASDH.isFinite()) {
+			throw L10N.getLocalizedException("fwk_param_finite_ASDH_value", [BlockBase.getL10N_param("ASDH",self),ASDH]);
+		}
+	}
+}
+
+
+/**
+* RootMeanSquareAcceleration
+*
+*  Calculates the root-mean-square acceleration (Grms) response from a random vibration ASD curve.
+*
+* @$blockCategory Calculation
+*/
+event RootMeanSquareAcceleration {
+
+	/**BlockBase object.
+	*
+	* This is initialized by the framework when the block is required for a model.
+	*/
+	BlockBase $base;
+
+	/** Parameters, filled in by the framework. */
+	RootMeanSquareAcceleration_$Parameters $parameters;
+
+	float frequencyLow;
+	float frequencyHigh;
+	float ASDLow;
+	float ASDHigh;
+
+	/** Called once at block start up. */
+	action $init() {
+		frequencyLow := $parameters.frequencyL;
+		frequencyHigh := $parameters.frequencyH;
+		ASDLow := $parameters.ASDL;
+		ASDHigh := $parameters.ASDH;
+		TimerParams tp := TimerParams.relative(1.0);
+		any _ := $base.createTimerWith(tp);
+	}
+
+	action $timerTriggered(Activation $activation) {
+		float nbOctaves :=  (frequencyHigh / frequencyLow).ln() / 2.0.ln();
+		float dB :=  10.0 * (ASDHigh / ASDLow).ln();
+		float m := dB / nbOctaves;
+		
+		float area;
+		if (m = (-10.0 * 2.0.ln())) {
+			area := ASDLow * frequencyLow * (frequencyHigh / frequencyLow).ln(); 
+		}
+		else
+		{
+			float area3 := (frequencyLow / frequencyHigh).pow(m / (10.0 *2.0.ln()));
+			area3 := frequencyHigh - frequencyLow * area3;
+			float area2 := ASDHigh / (10.0 * 2.0.ln() + m);
+			area := 10.0 * 2.0.ln() * area2 * area3;
+		}
+		float rms := area.sqrt();
+		
+		
+		$setOutput_Grms($activation, rms);
+	}
+
+	/**
+	* RootMeanSquareAcceleration Output
+	*
+	* Grms based on the parameters value
+	*/
+	action<Activation,float> $setOutput_Grms;	// This is initialized by the framework. It sets the output of the block and may trigger any blocks connected to this output.
+
+}
