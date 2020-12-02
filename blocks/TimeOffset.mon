@@ -1,0 +1,66 @@
+
+package apamax.analyticsbuilder.custom;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+using apama.analyticsbuilder.TimerParams;
+using com.apama.exceptions.Exception;
+
+event TimeOffset_$Parameters {
+	
+
+	/**
+	 * Interval (s).
+	 *
+	 * The interval in seconds in which this block should fire.
+	 *
+	 */
+	float interval;
+	
+	action $validate() {
+		if(interval<=0.0) {
+			throw Exception("Interval should be > 0.0", "IllegalArgumentException");
+		}
+	}
+
+}
+
+/**
+ * TimeOffset
+ *
+ * Calculate the difference between model time and server clock.
+ *
+* @$blockCategory Calculation
+ */
+event TimeOffset {
+	
+	/**BlockBase object.
+	 *
+	 * This is initialized by the framework when the block is required for a model.
+	 */
+	BlockBase $base;
+	TimeOffset_$Parameters $parameters;
+	/**
+	 *
+	 * calculates the difference between model time and server time
+	 *  
+	 * @param $activation The current activation, contextual information required when generating a block output. Blocks should only use the
+	 * <tt>Activation</tt> object passed to them from the framework, never creating their own or holding on to an <tt>Activation</tt> object.
+	 *
+	 */
+	
+	action $init() {
+		TimerParams tp := TimerParams.recurring($parameters.interval);
+		any _ := $base.createTimerWith(tp);
+	}
+	
+	action $timerTriggered(Activation $activation) {
+		$setOutput_timeOffsetOutput($activation, currentTime - $activation.timestamp);
+	}
+	
+	/**
+	 * TimeOffset Output
+	 * Server time - model time
+	 */
+	action<Activation,float> $setOutput_timeOffsetOutput;	// This is initialized by the framework. It sets the output of the block and may trigger any blocks connected to this output.
+}
