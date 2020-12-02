@@ -1,0 +1,104 @@
+
+package apamax.analyticsbuilder.custom;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+using com.apama.json.JSONPlugin;
+using com.apama.exceptions.Exception;
+using com.apama.util.AnyExtractor;
+using apama.analyticsbuilder.L10N;
+
+
+//Algorithm based on http://sam-koblenski.blogspot.com/2015/09/everyday-dsp-for-programmers-edge.html
+
+/** The parameters for the Edge Detection block. */
+event EdgeDetection_$Parameters{
+
+	/**Fixed threshold for detecting edges
+	*
+	* This must be a finite and positive number.
+	*/
+	float threshold;
+
+	action $validate() {
+		if (not threshold.isFinite() or threshold < 0.0) {
+			throw L10N.getLocalizedException("fwk_param_finite_positive_value", [BlockBase.getL10N_param("threshold",self),threshold]);
+		}
+	}
+}
+
+/** State of the block.*/
+event EdgeDetection_$State{
+	float fastAvg; //fast exponential avg to reduce the noise
+	float slowAvg; //slow exponential avg to remove almost all the noise. It acts as a reference for the fast avg.
+	float prevDifference; //abs diff between fast and slow avg.
+	boolean stateInitialized;
+}
+
+/**
+* Edge Detection
+*
+*  monitor a signal for a change of state 
+* 
+* @$blockCategory Calculation
+*/
+event EdgeDetection {
+
+	/**BlockBase object.
+	*
+	* This is initialized by the framework when the block is required for a model.
+	*/
+	BlockBase $base;
+	
+	/** Parameters, filled in by the framework. */
+	EdgeDetection_$Parameters $parameters;
+
+	float threshold;
+
+	/** Called once at block start up. */
+	action $init() {
+		threshold := $parameters.threshold;
+	}
+
+	/**
+	* This action receives the input values and contains the logic of the block. 
+	*
+	* It takes in 1 float which represents the signal value
+
+   	* @param $activation The current activation, contextual information required when generating a block output. Blocks should only use the
+   	* <tt>Activation</tt> object passed to them from the framework, never creating their own or holding on to an <tt>Activation</tt> object.
+   	* @param $input_value input to the block.
+   	*
+   	* @$inputName value float
+	*/
+	action $process(Activation $activation, float $input_value, EdgeDetection_$State $blockState) {
+		//we output the amplitude once we detect a min and max
+		if (not $blockState.stateInitialized) {
+			$blockState.fastAvg := $input_value;
+			$blockState.slowAvg := $input_value;
+			$blockState.prevDifference := 0.0;
+			$blockState.stateInitialized := true;
+		}
+		else
+		{
+			$blockState.fastAvg := ExpAvg($input_value, $blockState.fastAvg, 0.25);
+			$blockState.slowAvg := ExpAvg($input_value, $blockState.slowAvg, 0.0625);
+			float difference := ($blockState.fastAvg - $blockState.slowAvg).abs();
+			boolean isEdge:= ($blockState.prevDifference < threshold and difference >= threshold);
+			$setOutput_isEdge($activation, isEdge);
+			$blockState.prevDifference := difference;
+		}
+	}
+
+	action ExpAvg(float input, float avg, float weight) returns float
+	{
+		return weight * input + (1.0-weight)*avg;
+	}
+
+	/**
+	* EdgeDetection Output
+	*
+	* Provide a boolean is a edge was detected or not
+	*/
+	action<Activation,boolean> $setOutput_isEdge;	// This is initialized by the framework. It sets the output of the block and may trigger any blocks connected to this output.
+}
