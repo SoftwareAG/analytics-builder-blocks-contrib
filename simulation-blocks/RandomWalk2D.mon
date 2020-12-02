@@ -1,0 +1,164 @@
+
+package apamax.analyticsbuilder.custom;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+using apama.analyticsbuilder.L10N;
+using apama.analyticsbuilder.TimerParams;
+using apama.analyticsbuilder.TimerHandle;
+using apama.analyticsbuilder.Partition_Broadcast;
+
+
+/** The parameters for the Random Walk 2D block. */
+event RandomWalk2D_$Parameters{
+
+	/**Starting position on the 2D walk (integer). If not set, the default value is 0
+	*
+	* This can be a negative or positive number
+	*/
+	optional<integer> startingXPosition;
+	optional<integer> startingYPosition;
+}
+
+/** State of the block.*/
+event  RandomWalk2D_$State{
+	boolean started;
+	integer currentXPosition;
+	integer currentYPosition;
+	integer minXPosition;
+	integer maxXPosition;
+	integer minYPosition;
+	integer maxYPosition;
+}
+
+
+
+/**
+* Random Walk
+*
+* Describes a path that consists of a succession of random steps.  
+*
+* Once the number of steps is reached, provide the min position, max position and current position of the overall walk.
+*
+*
+* @$blockCategory Calculations
+*/
+event RandomWalk2D {
+
+	/**BlockBase object.
+	*
+	* This is initialized by the framework when the block is required for a model.
+	*/
+	BlockBase $base;
+
+	/** Parameters, filled in by the framework. */
+	RandomWalk2D_$Parameters $parameters;
+
+	integer startingXPosition;
+	integer startingYPosition;
+
+	/** Called once at block start up. */
+	action $init() {
+		ifpresent $parameters.startingXPosition as sp
+		{
+			startingXPosition := sp;
+		}
+		else
+		{
+			startingXPosition := 0;
+		}
+
+		ifpresent $parameters.startingYPosition as sp
+		{
+			startingYPosition := sp;
+		}
+		else
+		{
+			startingYPosition := 0;
+		}
+	}
+	/**
+	* This action receives the input which is the starting position of the walk. 
+	*  
+	* @param $input_trigger The trigger to generate an output.
+	*
+	* @$inputName trigger Trigger.
+	*/
+	action $process(Activation $activation, boolean $input_trigger, RandomWalk2D_$State $blockState) {
+		integer maxXPosition;
+		integer minXPosition;
+		integer maxYPosition;
+		integer minYPosition;
+		integer currentXPosition;
+		integer currentYPosition;
+		float maxRand := 1.0;
+		
+		if $blockState.started {
+			currentXPosition := $blockState.currentXPosition;
+			currentYPosition := $blockState.currentYPosition;
+			minXPosition := $blockState.minXPosition;
+			maxXPosition := $blockState.maxXPosition;
+			minYPosition := $blockState.minYPosition;
+			maxYPosition := $blockState.maxYPosition;
+		} else {
+			currentXPosition := startingXPosition;
+			currentYPosition := startingYPosition;
+			maxXPosition := startingXPosition;
+			minXPosition := startingXPosition;
+			maxYPosition := startingYPosition;
+			minYPosition := startingYPosition;
+			$blockState.started := true;
+		}
+
+		float random := maxRand.rand();
+		log "MEL " + random.toString();
+		if (random < 0.25) {
+			currentXPosition := currentXPosition +1;
+			if (currentXPosition > maxXPosition) {
+				maxXPosition := currentXPosition;
+			}
+		} else if (random < 0.5){
+			currentXPosition := currentXPosition - 1;
+			if (currentXPosition < minXPosition) {
+				minXPosition := currentXPosition;
+			}
+		} else if (random < 0.75){
+			currentYPosition := currentYPosition + 1;
+			if (currentYPosition > maxYPosition) {
+				maxYPosition := currentYPosition;
+			}
+		} else {
+			currentYPosition := currentYPosition - 1;
+			if (currentYPosition < minYPosition) {
+				minYPosition := currentYPosition;
+			}
+		}
+
+		$blockState.currentXPosition := currentXPosition;
+		$blockState.currentYPosition := currentYPosition;
+		$blockState.minXPosition := minXPosition;
+		$blockState.maxXPosition := maxXPosition;
+		$blockState.minYPosition := minYPosition;
+		$blockState.maxYPosition := maxYPosition;
+		
+		$setOutput_minXPosition($activation, minXPosition.toFloat());
+		$setOutput_maxXPosition($activation, maxXPosition.toFloat());
+		$setOutput_currentXPosition($activation, currentXPosition.toFloat());
+		$setOutput_minYPosition($activation, minYPosition.toFloat());
+		$setOutput_maxYPosition($activation, maxYPosition.toFloat());
+		$setOutput_currentYPosition($activation, currentYPosition.toFloat());
+	}
+
+
+
+	/**
+	* Values resulting from the random walk when the nb of steps is reached
+	*/
+	action<Activation,float> $setOutput_minXPosition;
+	action<Activation,float> $setOutput_maxXPosition;
+	action<Activation,float> $setOutput_currentXPosition;
+	action<Activation,float> $setOutput_minYPosition;
+	action<Activation,float> $setOutput_maxYPosition;
+	action<Activation,float> $setOutput_currentYPosition;
+
+}
