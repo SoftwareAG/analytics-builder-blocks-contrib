@@ -1,0 +1,99 @@
+package apamax.analyticsbuilder.custom;
+
+using apama.analyticsbuilder.L10N;
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+
+/** The parameters for the Time at Level Counting block. */
+event TimeAtLevelCounting_$Parameters{
+
+	/**Threshold : if the incoming values deviate above this threshold then calculate the time the values was at or above this thresold.
+	*
+	* This must be a finite number.
+	*/
+	float threshold;
+
+	action $validate() {
+		if  (not threshold.isFinite()) {
+			throw L10N.getLocalizedException("fwk_param_finite_threshold_value", [BlockBase.getL10N_param("threshold",self),threshold]);
+		}
+
+	}
+}
+
+/** State of the block.*/
+event TimeAtLevelCounting_$State{
+	float startTime;
+	float latestBreachedTime;
+}
+
+
+/**
+* TimeAtLevelCounting
+*
+* Take an incoming value and produce one of the below output: 
+*	- 0 if value is below a given threshold 
+*	- time (float) during which the incoming value was above the threshold
+*
+*
+* @$blockCategory Calculation
+*/
+event TimeAtLevelCounting {
+
+	/**BlockBase object.
+	*
+	* This is initialized by the framework when the block is required for a model.
+	*/
+	BlockBase $base;
+
+	/** Parameters, filled in by the framework. */
+	TimeAtLevelCounting_$Parameters $parameters;
+
+	float threshold;
+
+	/** Called once at block start up. */
+	action $init() {
+		threshold := $parameters.threshold;
+	}
+
+	/**
+	* This action receives the input values and contains the logic of the block. 
+	*
+	* It checks if the value is above the given threshold and generate the resulting output 
+	*  
+	* @param $activation The current activation, contextual information required when generating a block output. Blocks should only use the
+	* <tt>Activation</tt> object passed to them from the framework, never creating their own or holding on to an <tt>Activation</tt> object.
+	* @param $input_value Value received
+	* @param $blockState current state of the block
+	*
+	* @$inputName value Value 
+	*/
+	action $process(Activation $activation, float $input_value, TimeAtLevelCounting_$State $blockState) {
+		//threshold is positive eg: 50, we want to raise a time if any value is going above 50
+		//threshold is negatif eg: -50, we want to raise a time if any value is going below -50 eg -70
+		if ((threshold >= 0.0 and $input_value < threshold) or (threshold < 0.0 and $input_value > threshold)){
+			if ($blockState.startTime != 0.0) {
+				$setOutput_timeAtLevelOutput($activation, ($blockState.latestBreachedTime - $blockState.startTime));
+				$blockState.startTime := 0.0;
+			} 
+			$setOutput_timeAtLevelOutput($activation, 0.0);
+		} else{
+			$blockState.latestBreachedTime := $activation.timestamp;
+			
+			if ($blockState.startTime = 0.0) {
+				$blockState.startTime := $activation.timestamp;
+			}
+			$setOutput_timeAtLevelOutput($activation, ($blockState.latestBreachedTime - $blockState.startTime));
+		}
+	}
+
+
+	/**
+	* TimeAtLevelCounting Output
+	*
+	* 0 if input value is below the threshold 
+	* OR
+	* time (float) during which the input value was above the threshold
+	*/
+	action<Activation,float> $setOutput_timeAtLevelOutput;	// This is initialized by the framework. It sets the output of the block and may trigger any blocks connected to this output.
+}
