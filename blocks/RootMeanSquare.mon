@@ -1,0 +1,108 @@
+
+package apamax.analyticsbuilder.custom;
+
+using apama.analyticsbuilder.L10N;
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+
+/** The parameters for the Root Mean Square block. */
+event RootMeanSquare_$Parameters{
+
+	/**Set Size : the calculation must be done over a set of a certain size
+	*
+	* This must be positive.
+	*/
+	integer setSize;
+
+	action $validate() {
+		if  (setSize <= 0) {
+			throw L10N.getLocalizedException("fwk_param_positive_setSize_value", [BlockBase.getL10N_param("setSize",self),setSize]);
+		}
+
+	}
+}
+
+/** State of the block.*/
+event RootMeanSquare_$State{
+	sequence<float> setOfValues;
+}
+
+
+/**
+* RootMeanSquare
+*
+* Calculates the square root of the mean square (the arithmetic mean of the squares of a set of values)
+*
+*
+* @$blockCategory Calculation
+*/
+event RootMeanSquare {
+
+	/**BlockBase object.
+	*
+	* This is initialized by the framework when the block is required for a model.
+	*/
+	BlockBase $base;
+
+	/** Parameters, filled in by the framework. */
+	RootMeanSquare_$Parameters $parameters;
+
+	integer setSize;
+
+	/** Called once at block start up. */
+	action $init() {
+		setSize := $parameters.setSize;
+	}
+
+	/**
+	* This action receives the input values and contains the logic of the block. 
+	*
+	* This adds the value to the state of the blocks and once the size of the set is reached, we calculate the root mean square.
+	* The values within the set of the State are inserted via a rolling window. Eg: setSize = 2, incoming values "30,31,32". The set contains first [30,31] and then [31,32]
+	*  
+	* @param $activation The current activation, contextual information required when generating a block output. Blocks should only use the
+	* <tt>Activation</tt> object passed to them from the framework, never creating their own or holding on to an <tt>Activation</tt> object.
+	* @param $input_value Value received
+	* @param $blockState current state of the block
+	*
+	* @$inputName value Value 
+	*/
+	action $process(Activation $activation, any $input_value, RootMeanSquare_$State $blockState) {
+		//we convert to float type if possible
+		float value;
+		switch($input_value as input)
+		{
+			case float: { value := input; }
+			case integer: { value := input.toFloat();}
+			default: 
+			{
+				return;
+			}
+		}
+		
+		$blockState.setOfValues.append(value);
+		
+		//expire old entries (index 0) until we reach the desired size set
+		while ($blockState.setOfValues.size() > setSize) {
+			$blockState.setOfValues.remove(0);
+		}
+	
+		float val;
+		float square :=0.0;
+		for val in $blockState.setOfValues
+		{
+			square := square + val.pow(2.0);
+		}
+		float mean := square /  $blockState.setOfValues.size().toFloat();
+		float root := mean.sqrt();
+		$setOutput_rootMeanSquareOutput($activation, root);
+	}
+
+
+	/**
+	* RootMeanSquare Output
+	*
+	* Result of the calculation
+	*/
+	action<Activation,float> $setOutput_rootMeanSquareOutput;	// This is initialized by the framework. It sets the output of the block and may trigger any blocks connected to this output.
+}
