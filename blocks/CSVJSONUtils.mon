@@ -1,0 +1,139 @@
+/*
+ * $Copyright (c) 2018-2019 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
+ * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Software AG
+ */
+
+package apamax.analyticsbuilder.custom.json;
+using com.apama.json.JSONPlugin;
+using com.apama.exceptions.Exception;
+
+/**
+ * Configurations for converting JSON to an EPL object.
+ *
+ */
+event ObjectUtilsConfig {
+	
+	/** Ignores if the json contains a property that is not a field in an event of the reference object. */
+	boolean ignoreMissing;
+	
+	/** Set the ignore missing configuration. */
+	action setIgnoreMissing(boolean b) returns ObjectUtilsConfig {
+		ignoreMissing := b;
+		return self;
+	}
+}
+
+/**
+ * Contains helper actions to convert JSON to an EPL object:
+ */
+event ObjectUtils {
+
+	/**
+	 * Populate an object from a JSON object.
+	 *
+	 * Populates the object 'obj' from the JSON properties recursively.  If obj is an event,
+	 * sets the fields from the JSON object.
+	 *
+	 * Throws if the json contains a property that is not a field in an event of obj.
+	 *
+	 * @param obj The reference object to fill in properties of.  Should be a sequence, dictionary or event.
+	 * @param json The JSON object.
+	 * @return the object (typically, the same as obj that was passed in)
+	 */
+	static action populateFromJSON(any obj, string json) returns any {
+		return populateFromJSONConfig(obj, json, new ObjectUtilsConfig);
+	}
+
+	/**
+	 * Populate an object from a JSON object using the set configurations.
+	 *
+	 * Populates the object 'obj' from the JSON properties recursively.  If obj is an event,
+	 * sets the fields from the JSON object.
+	 *
+	 * Throws if the json contains a property that is not a field in an event of obj and the 'ignoreMissing' is set to false.
+	 *
+	 * @param obj The reference object to fill in properties of.  Should be a sequence, dictionary or event.
+	 * @param json The JSON object.
+	 * @param cfg The configuration.
+	 * @return the object (typically, the same as obj that was passed in)
+	 */
+
+	static action populateFromJSONConfig(any obj, string json, ObjectUtilsConfig cfg) returns any {
+		any parsedJSON := JSONPlugin.fromJSON(json);
+		return populate(obj, parsedJSON, cfg);
+	}
+
+	/**
+	 * Populate an object from a generic set of entries.
+	 *
+	 * Populates the object 'obj' from a generic set of entries (a sequence<any> or a dictionary<any, any>
+	 *
+	 * Throws if the toSet contains an entry that is not a field in an event of obj.
+	 *
+	 * @param obj The reference object to fill in properties of.  Should be a sequence, dictionary or event.
+	 * @param toSet the generic set of entries to fill in the entries of obj.
+	 * @param cfg The configuration.
+	 */
+	static action populate(any obj, any toSet, ObjectUtilsConfig cfg) returns any {
+		if obj = new any { return toSet; }// presumably an any.
+		switch(obj) {
+			case string: { return toSet.valueToString(); }
+			case integer: { return <integer> toSet; }
+			case float: { return <float> toSet; }
+			case boolean: { return <boolean> toSet; }
+			case decimal: { return <decimal> toSet; }
+			default: {
+				ifpresent toSet {
+					string objType := obj.getTypeName();
+					boolean dynamicSize := false;
+					string entryType := "";
+					sequence<any> keys := toSet.getKeys();
+					// special case for optional<string>:
+					if objType.find("optional<string") = 0 {
+						string s := <string> populate("", toSet, cfg);
+						return optional<string>(s);
+					}
+					// and for optional<>:
+					if objType.find("optional<") = 0 {
+						entryType := obj.getAction("getOr").getActionReturnTypeName();
+						string stringified := "optional("+populate(any.newInstance(entryType), toSet, cfg).valueToString()+")";
+						return obj.getAction("parse").getGenericAction()([<any> stringified]);
+					}
+					if objType.find("dictionary<") = 0 {
+						dynamicSize := true;
+						entryType := obj.getAction("getOr").getActionReturnTypeName();
+					}
+					if objType.find("sequence<") = 0 {
+						dynamicSize := true;
+						entryType := objType.substring(9,-1).rtrim();
+						(<action<integer> > obj.getAction("setSize"))(keys.size());
+					}
+					any key;
+					for key in keys {
+						any value := toSet.getEntry(key);
+						any prototype;
+						if(dynamicSize) {
+							prototype := any.newInstance(entryType);
+						} else {
+							try {
+								prototype := obj.getEntry(key); // throws if the field does not exist in the event.
+							} catch(Exception e) {
+								if cfg.ignoreMissing { continue; }
+								throw e; //NON-L10N-DEV
+							}
+						}
+						any newValue := populate(prototype, value, cfg);
+						obj.setEntry(key, newValue);
+					}
+					return obj;
+				} else {
+					// for optional, return new optional<T> if toSet is empty (i.e. null)
+					if obj.getTypeName().find("optional<") = 0 {
+						return any.newInstance(obj.getTypeName());
+					}
+					return toSet; // either obj is any, or obj is new optional<> and toSet is null - either way, don't override.
+				}
+			}
+		}
+	}
+}

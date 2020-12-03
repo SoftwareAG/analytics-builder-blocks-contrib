@@ -1,0 +1,51 @@
+
+package apamax.analyticsbuilder.custom;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+
+/**
+ * NAND
+ *
+ * Perform a NAND gate over two connected inputs.
+ *
+ * Only generates an output if both the inputs receive a value.
+ *
+* @$blockCategory Logic
+ */
+event Nand {
+	
+	/**BlockBase object.
+	 *
+	 * This is initialized by the framework when the block is required for a model.
+	 */
+	BlockBase $base;
+	
+	/**
+	 * This action receives the input values and contains the logic of the block. 
+	 *
+	 * It performs a NAND Gate operator between the inputs in this method. 
+	 *  
+	 * @param $activation The current activation, contextual information required when generating a block output. Blocks should only use the
+	 * <tt>Activation</tt> object passed to them from the framework, never creating their own or holding on to an <tt>Activation</tt> object.
+	 * @param $input_value1 First input to the block.
+	 * @param $input_value2 Second input to the block.
+	 *
+	 * @$inputName value1 Value 1
+	 * @$inputName value2 Value 2
+	 */
+	action $process(Activation $activation, optional<boolean> $input_value1, optional<boolean> $input_value2) {
+		ifpresent $input_value1, $input_value2{		// As both the inputs of the blocks are of optional type, process only if both of them have a value.
+			boolean result :=  not ($input_value1 and $input_value2);
+			$setOutput_nandOutput($activation, result);
+		}
+	}
+	
+	
+	/**
+	 * NAND Output
+	 *
+	 * Result of performing a NAND over the two inputs. False if both inputs are true, True otherwise.
+	 */
+	action<Activation,boolean> $setOutput_nandOutput;	// This is initialized by the framework. It sets the output of the block and may trigger any blocks connected to this output.
+}

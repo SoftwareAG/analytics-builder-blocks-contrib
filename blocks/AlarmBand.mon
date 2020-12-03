@@ -1,0 +1,117 @@
+
+package apamax.analyticsbuilder.custom;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+using com.apama.json.JSONPlugin;
+using com.apama.exceptions.Exception;
+using com.apama.util.AnyExtractor;
+using apama.analyticsbuilder.L10N;
+
+/** The parameters for the AlarmBand block. */
+event AlarmBand_$Parameters{
+
+	/**Defines the upper limit of the alarm band
+	*
+	* This is a float, must be a finite value
+	*/
+	float upper;
+
+	/**Defines the lower limit of the alarm band
+	*
+	* This is a float, must be a finite value
+	*/
+	float lower;
+
+	action $validate() {
+		if  (not upper.isFinite()) {
+			throw L10N.getLocalizedException("fwk_param_finite_upper_value", [BlockBase.getL10N_param("upper",self),upper]);
+		}
+		if  (not lower.isFinite()) {
+			throw L10N.getLocalizedException("fwk_param_finite_lower_value", [BlockBase.getL10N_param("lower",self),lower]);
+		}
+
+	}
+}
+
+/** State of the block.*/
+event AlarmBand_$State{
+	boolean entered; //we keep in memory if the pulse has entered the block. 
+}
+
+/**
+* AlarmBand
+*
+* creates a pulse whenever a signal enters or leaves a defined alarm band
+*
+*
+* @$blockCategory Calculation
+*/
+event AlarmBand {
+
+	/**BlockBase object.
+	*
+	* This is initialized by the framework when the block is required for a model.
+	*/
+	BlockBase $base;
+
+	/** Parameters, filled in by the framework. */
+	AlarmBand_$Parameters $parameters;
+
+	float upperLimit;
+	float lowerLimit;
+
+	/** Called once at block start up. */
+	action $init() {
+		upperLimit := $parameters.upper;
+		lowerLimit := $parameters.lower;
+	}
+
+	/**
+	* This action receives the input values and contains the logic of the block. 
+	*
+	* It takes in a float and check if it s inside or outside the alarm band
+	*
+	* @param $activation The current activation, contextual information required when generating a block output. Blocks should only use the
+	* <tt>Activation</tt> object passed to them from the framework, never creating their own or holding on to an <tt>Activation</tt> object.
+	* @param $input_value input to the block.
+	*
+	* @$inputName value float
+	*/
+	action $process(Activation $activation, float $input_value, AlarmBand_$State $blockState) {
+		if $input_value >= lowerLimit and $input_value <= upperLimit {
+			$blockState.entered := true;
+			$setOutput_entered($activation, true);
+			$setOutput_left($activation, false);
+			$setOutput_up($activation, false);
+			$setOutput_down($activation, false);
+		} else if $input_value < lowerLimit and $blockState.entered = true {  //a pulse has left a band ONLY if it has previously entered it.
+			$blockState.entered := false;
+			$setOutput_entered($activation, false);
+			$setOutput_left($activation, true);
+			$setOutput_up($activation, false);
+			$setOutput_down($activation, true);	
+		} else if $input_value > upperLimit and $blockState.entered = true {  //a pulse has left a band ONLY if it has previously entered it.
+			$blockState.entered := false;
+			$setOutput_entered($activation, false);
+			$setOutput_left($activation, true);
+			$setOutput_up($activation, true);
+			$setOutput_down($activation, false);	
+		}
+	}
+
+
+	/**
+	* AlarmBand Output
+	*
+	* Pulses defining if the value has entered the alarm band or if it has left it. If it has left it then define which limit did it breach (upper or lower)
+	*/
+	action<Activation,boolean> $setOutput_entered;	// This is initialized by the framework. It sets the output of the block and may trigger any blocks connected to this output.
+	action<Activation,boolean> $setOutput_left;
+	action<Activation,boolean> $setOutput_up;
+	action<Activation,boolean> $setOutput_down;
+	constant string $OUTPUT_TYPE_entered := "pulse";
+	constant string $OUTPUT_TYPE_left := "pulse";
+	constant string $OUTPUT_TYPE_up := "pulse";
+	constant string $OUTPUT_TYPE_down := "pulse";
+}

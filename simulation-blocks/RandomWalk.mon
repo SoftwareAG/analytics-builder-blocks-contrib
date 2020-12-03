@@ -1,0 +1,119 @@
+
+package apamax.analyticsbuilder.custom;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+using apama.analyticsbuilder.L10N;
+using apama.analyticsbuilder.TimerParams;
+using apama.analyticsbuilder.TimerHandle;
+using apama.analyticsbuilder.Partition_Broadcast;
+
+/** The parameters for the Random Walk block. */
+event RandomWalk_$Parameters{
+
+	/**Starting position on the 1D walk (integer). If not set, the default value is 0
+	*
+	* This can be a negative or positive number
+	*/
+	optional<integer> startingPosition;
+}
+
+/** State of the block.*/
+event  RandomWalk_$State{
+	boolean started;
+	integer currentPosition;
+	integer minPosition;
+	integer maxPosition;
+}
+
+
+/**
+* Random Walk
+*
+* Describes a path that consists of a succession of random steps.  
+*
+* After every pulse, provides the min position, max position and current position of the overall walk.
+*
+*
+* @$blockCategory Calculations
+*/
+event RandomWalk {
+
+	/**BlockBase object.
+	*
+	* This is initialized by the framework when the block is required for a model.
+	*/
+	BlockBase $base;
+
+	/** Parameters, filled in by the framework. */
+	RandomWalk_$Parameters $parameters;
+
+	integer startingPosition;
+
+	/** Called once at block start up. */
+	action $init() {
+		ifpresent $parameters.startingPosition as sp
+		{
+			startingPosition := sp;
+		}
+		else
+		{
+			startingPosition := 0;
+		}
+	}
+
+	/**
+	* This action receives the input which is the starting position of the walk. 
+	*  
+	* @param $input_trigger The trigger to generate an output.
+	*
+	* @$inputName trigger Trigger.
+	*/
+	action $process(Activation $activation, boolean $input_trigger, RandomWalk_$State $blockState) {
+		integer maxPosition;
+		integer minPosition;
+		integer currentPosition;
+		float maxRand := 1.0;
+
+		if $blockState.started {
+			currentPosition := $blockState.currentPosition;
+			minPosition := $blockState.minPosition;
+			maxPosition := $blockState.maxPosition;
+		} else {
+			currentPosition := startingPosition;
+			maxPosition := startingPosition;
+			minPosition := startingPosition;
+			$blockState.started := true;
+		}
+
+		float random := maxRand.rand();
+		log "MEL random " + random.toString();
+		if (random < 0.5) {
+			currentPosition := currentPosition +1;
+			if (currentPosition > maxPosition) {
+				maxPosition := currentPosition;
+			}
+		} else {
+			currentPosition := currentPosition - 1;
+			if (currentPosition < minPosition) {
+				minPosition := currentPosition;
+			}
+		}
+		$blockState.currentPosition := currentPosition;
+		$blockState.minPosition := minPosition;
+		$blockState.maxPosition := maxPosition;
+		
+		$setOutput_minPosition($activation, minPosition.toFloat());
+		$setOutput_maxPosition($activation, maxPosition.toFloat());
+		$setOutput_currentPosition($activation, currentPosition.toFloat());
+	}
+
+
+	/**
+	* Values resulting from the random walk when the nb of steps is reached
+	*/
+	action<Activation,float> $setOutput_minPosition;
+	action<Activation,float> $setOutput_maxPosition;
+	action<Activation,float> $setOutput_currentPosition;
+
+}
