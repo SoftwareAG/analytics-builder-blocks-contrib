@@ -11,15 +11,19 @@ using apama.analyticsbuilder.L10N;
 /** The parameters for the AlarmBand block. */
 event AlarmBand_$Parameters{
 
-	/**Defines the upper limit of the alarm band
-	*
-	* This is a float, must be a finite value
+	/**
+	* Upper Limit
+	* 
+	* Defines the upper limit of the alarm band.
+	* This is a float, must be a finite value.
 	*/
 	float upper;
 
-	/**Defines the lower limit of the alarm band
+	/**
+	* Lower Limit.
 	*
-	* This is a float, must be a finite value
+	* Defines the lower limit of the alarm band.
+	* This is a float, must be a finite value.
 	*/
 	float lower;
 
@@ -40,12 +44,11 @@ event AlarmBand_$State{
 }
 
 /**
-* AlarmBand
+* Alarm Band
 *
-* creates a pulse whenever a signal enters or leaves a defined alarm band
+* Creates a pulse whenever a signal enters or leaves a defined alarm band.
 *
-*
-* @$blockCategory Calculation
+* @$blockCategory Calculations
 */
 event AlarmBand {
 
@@ -68,15 +71,13 @@ event AlarmBand {
 	}
 
 	/**
-	* This action receives the input values and contains the logic of the block. 
-	*
-	* It takes in a float and check if it s inside or outside the alarm band
 	*
 	* @param $activation The current activation, contextual information required when generating a block output. Blocks should only use the
 	* <tt>Activation</tt> object passed to them from the framework, never creating their own or holding on to an <tt>Activation</tt> object.
-	* @param $input_value input to the block.
 	*
-	* @$inputName value float
+	* @param $input_value float value to check the alarm band against
+	*
+	* @$inputName value Value
 	*/
 	action $process(Activation $activation, float $input_value, AlarmBand_$State $blockState) {
 		if $input_value >= lowerLimit and $input_value <= upperLimit {
@@ -102,16 +103,34 @@ event AlarmBand {
 
 
 	/**
-	* AlarmBand Output
-	*
-	* Pulses defining if the value has entered the alarm band or if it has left it. If it has left it then define which limit did it breach (upper or lower)
-	*/
+	 * Entered 
+	 * 
+	 * Activated when signal enters alarm band
+	 */
 	action<Activation,boolean> $setOutput_entered;	// This is initialized by the framework. It sets the output of the block and may trigger any blocks connected to this output.
-	action<Activation,boolean> $setOutput_left;
-	action<Activation,boolean> $setOutput_up;
-	action<Activation,boolean> $setOutput_down;
 	constant string $OUTPUT_TYPE_entered := "pulse";
+
+	/**
+	 * Left 
+	 * 
+	 * Activated when signal leaves alarm band
+	 */
+	action<Activation,boolean> $setOutput_left;
 	constant string $OUTPUT_TYPE_left := "pulse";
+
+	/**
+	 * Up
+	 * 
+	 * Activated when signal leaves alarm band through upper limit
+	 */
+	action<Activation,boolean> $setOutput_up;
 	constant string $OUTPUT_TYPE_up := "pulse";
+
+	/**
+	 * Down
+	 * 
+	 * Activated when signal leaves alarm band through lower limit
+	 */
+	action<Activation,boolean> $setOutput_down;
 	constant string $OUTPUT_TYPE_down := "pulse";
 }
