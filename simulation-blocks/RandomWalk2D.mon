@@ -1,4 +1,7 @@
-
+/*
+ * $Copyright (c) 2020 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
+ * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Software AG
+ */
 package apamax.analyticsbuilder.custom;
 
 using apama.analyticsbuilder.BlockBase;
@@ -12,11 +15,21 @@ using apama.analyticsbuilder.Partition_Broadcast;
 /** The parameters for the Random Walk 2D block. */
 event RandomWalk2D_$Parameters{
 
-	/**Starting position on the 2D walk (integer). If not set, the default value is 0
+	/**
+	* Starting X
+	* 
+	* Starting X position on the 2D walk (integer). If not set, the default value is 0
 	*
 	* This can be a negative or positive number
 	*/
 	optional<integer> startingXPosition;
+	/**
+	* Starting Y
+	* 
+	* Starting Y position on the 2D walk (integer). If not set, the default value is 0
+	*
+	* This can be a negative or positive number
+	*/
 	optional<integer> startingYPosition;
 }
 
@@ -34,7 +47,7 @@ event  RandomWalk2D_$State{
 
 
 /**
-* Random Walk
+* Random Walk 2D
 *
 * Describes a path that consists of a succession of random steps.  
 *
@@ -45,7 +58,8 @@ event  RandomWalk2D_$State{
 */
 event RandomWalk2D {
 
-	/**BlockBase object.
+	/**
+	* BlockBase object.
 	*
 	* This is initialized by the framework when the block is required for a model.
 	*/
@@ -152,13 +166,40 @@ event RandomWalk2D {
 
 
 	/**
-	* Values resulting from the random walk when the nb of steps is reached
+	* MinPosX
+	*
+	* Minimal X position reached during random walk
 	*/
 	action<Activation,float> $setOutput_minXPosition;
+	/**
+	* MaxPosX
+	*
+	* Maximal X position reached during random walk
+	*/
 	action<Activation,float> $setOutput_maxXPosition;
+	/**
+	* CurrentX
+	*
+	* Current X position of the random walk
+	*/
 	action<Activation,float> $setOutput_currentXPosition;
+	/**
+	* MinPosY
+	*
+	* Minimal Y position reached during random walk
+	*/
 	action<Activation,float> $setOutput_minYPosition;
+	/**
+	* MaxPosY
+	*
+	* Maximal Y position reached during random walk
+	*/
 	action<Activation,float> $setOutput_maxYPosition;
+	/**
+	* CurrentY
+	*
+	* Current Y position of the random walk
+	*/
 	action<Activation,float> $setOutput_currentYPosition;
 
 }
