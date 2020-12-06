@@ -8,21 +8,27 @@ using com.apama.exceptions.Exception;
 using apamax.analyticsbuilder.custom.json.ObjectUtils;
 using apamax.analyticsbuilder.custom.json.ObjectUtilsConfig;
 
-event JSONArray{
+event JSONArray {
 	sequence<dictionary<string,any> >  json; 
 }
 
 /** The parameters for the CSVWriter block. */
-event CSVWriter_$Parameters{
+event CSVWriter_$Parameters {
 
-	/**Defines the column delimitor
+	/**
+	* Column delimiter
+	* 
+	* Defines the column delimiter
 	*
 	* This is a string. Defaut value is ","
 	*/
 	optional<string> colDelimitor;
 
-	/**Defines the line delimitor
-	*
+	/**
+    * Line delimiter
+	* 
+	* Defines the line delimiter
+    *
 	* This is a string. Defaut value is "\n"
 	*/
 	optional<string> lineDelimitor;
@@ -34,11 +40,12 @@ event CSVWriter_$Parameters{
 * Converts a Json array into a CSV (string).
 *
 *
-* @$blockCategory Utility
+* @$blockCategory Utilities
 */
 event CSVWriter {
 
-	/**BlockBase object.
+	/**
+	* BlockBase object.
 	*
 	* This is initialized by the framework when the block is required for a model.
 	*/
@@ -78,9 +85,9 @@ event CSVWriter {
 	*  
 	* @param $activation The current activation, contextual information required when generating a block output. Blocks should only use the
 	* <tt>Activation</tt> object passed to them from the framework, never creating their own or holding on to an <tt>Activation</tt> object.
-	* @param $input_value input to the block.
+	* @param $input_value JSON string
 	*
-	* @$inputName value String
+	* @$inputName value JSON
 	*/
 	action $process(Activation $activation, string $input_value) {
 		try
@@ -153,9 +160,9 @@ event CSVWriter {
 
 
 	/**
-	* CSVWriter Output
+	* CSV
 	*
-	* Resulting string from parsing the JSON array
+	* Resulting string from writing the JSON array into a CSV
 	*/
 	action<Activation,string> $setOutput_csvOutput;	// This is initialized by the framework. It sets the output of the block and may trigger any blocks connected to this output.
 }

@@ -11,25 +11,37 @@ using com.apama.util.AnyExtractor;
 /** The parameters for the CSVReader block. */
 event CSVReader_$Parameters{
 
-	/**Defines the column delimitor
+	/**
+	* Column delimiter
+	*
+	* Defines the column delimiter
 	*
 	* This is a string. Defaut value is ","
 	*/
 	optional<string> colDelimitor;
 
-	/**Defines the line delimitor
+	/**
+	* Line delimiter
+	*
+    * Defines the line delimiter
 	*
 	* This is a string. Defaut value is "\n"
 	*/
 	optional<string> lineDelimitor;
 
-	/**Defines the fragment which will contain the resulting JSON string array
+	/**
+	* Fragment name
+	* 
+	* Defines the fragment which will contain the resulting JSON string array
 	*
 	* This is a string. 
 	*/
 	string fragmentName;
 
-	/**Defines if there is a header in the csv.
+	/**
+	* Includes Header
+	* 
+	* Defines if there is a header in the csv.
 	*
 	* If false then column names will be generated: col1, col2,...
 	* Default value is true.
@@ -40,14 +52,15 @@ event CSVReader_$Parameters{
 /**
 * CSVReader
 *
-* Converts a string (CSV format) into a Json array.
+* Converts a string (CSV format) into a JSON array.
 *
 *
-* @$blockCategory Utility
+* @$blockCategory Utilities
 */
 event CSVReader {
 
-	/**BlockBase object.
+	/**
+	* BlockBase object.
 	*
 	* This is initialized by the framework when the block is required for a model.
 	*/
@@ -100,9 +113,9 @@ event CSVReader {
 	*  
 	* @param $activation The current activation, contextual information required when generating a block output. Blocks should only use the
 	* <tt>Activation</tt> object passed to them from the framework, never creating their own or holding on to an <tt>Activation</tt> object.
-	* @param $input_value input to the block.
+	* @param $input_csv The CSV string.
 	*
-	* @$inputName value String
+	* @$inputName CSV CSV
 	*/
 	action $process(Activation $activation, string $input_csv) {
 		try{
@@ -168,7 +181,7 @@ event CSVReader {
 
 
 	/**
-	* CSVReader Output
+	* JSON
 	*
 	* Resulting json string from parsing the csv
 	*/
