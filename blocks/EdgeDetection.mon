@@ -14,7 +14,10 @@ using apama.analyticsbuilder.L10N;
 /** The parameters for the Edge Detection block. */
 event EdgeDetection_$Parameters{
 
-	/**Fixed threshold for detecting edges
+	/**
+	* Threshold. 
+	* 
+	* Fixed threshold for detecting edges
 	*
 	* This must be a finite and positive number.
 	*/
@@ -38,13 +41,14 @@ event EdgeDetection_$State{
 /**
 * Edge Detection
 *
-*  monitor a signal for a change of state 
+* Monitor a signal for a change of state. 
 * 
-* @$blockCategory Calculation
+* @$blockCategory Calculations
 */
 event EdgeDetection {
 
-	/**BlockBase object.
+	/**
+	* BlockBase object.
 	*
 	* This is initialized by the framework when the block is required for a model.
 	*/
@@ -67,9 +71,9 @@ event EdgeDetection {
 
    	* @param $activation The current activation, contextual information required when generating a block output. Blocks should only use the
    	* <tt>Activation</tt> object passed to them from the framework, never creating their own or holding on to an <tt>Activation</tt> object.
-   	* @param $input_value input to the block.
+   	* @param $input_value input signal for edge detection.
    	*
-   	* @$inputName value float
+   	* @$inputName value Value
 	*/
 	action $process(Activation $activation, float $input_value, EdgeDetection_$State $blockState) {
 		//we output the amplitude once we detect a min and max
@@ -78,9 +82,7 @@ event EdgeDetection {
 			$blockState.slowAvg := $input_value;
 			$blockState.prevDifference := 0.0;
 			$blockState.stateInitialized := true;
-		}
-		else
-		{
+		} else {
 			$blockState.fastAvg := ExpAvg($input_value, $blockState.fastAvg, 0.25);
 			$blockState.slowAvg := ExpAvg($input_value, $blockState.slowAvg, 0.0625);
 			float difference := ($blockState.fastAvg - $blockState.slowAvg).abs();
@@ -90,15 +92,14 @@ event EdgeDetection {
 		}
 	}
 
-	action ExpAvg(float input, float avg, float weight) returns float
-	{
+	action ExpAvg(float input, float avg, float weight) returns float {
 		return weight * input + (1.0-weight)*avg;
 	}
 
 	/**
-	* EdgeDetection Output
+	* Edge
 	*
-	* Provide a boolean is a edge was detected or not
+	* true if an edge is detected, false if not. 
 	*/
 	action<Activation,boolean> $setOutput_isEdge;	// This is initialized by the framework. It sets the output of the block and may trigger any blocks connected to this output.
 }
