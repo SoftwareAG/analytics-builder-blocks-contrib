@@ -1,3 +1,7 @@
+/*
+ * $Copyright (c) 2020 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
+ * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Software AG
+ */
 package apamax.analyticsbuilder.custom;
 
 using apama.analyticsbuilder.L10N;
@@ -7,7 +11,10 @@ using apama.analyticsbuilder.Activation;
 /** The parameters for the Time at Level Counting block. */
 event TimeAtLevelCounting_$Parameters{
 
-	/**Threshold : if the incoming values deviate above this threshold then calculate the time the values was at or above this thresold.
+	/**
+	* Threshold 
+	* 
+	* if the incoming values deviate above this threshold then calculate the time the values was at or above this thresold.
 	*
 	* This must be a finite number.
 	*/
@@ -36,7 +43,7 @@ event TimeAtLevelCounting_$State{
 *	- time (float) during which the incoming value was above the threshold
 *
 *
-* @$blockCategory Calculation
+* @$blockCategory Calculations
 */
 event TimeAtLevelCounting {
 
@@ -89,7 +96,7 @@ event TimeAtLevelCounting {
 
 
 	/**
-	* TimeAtLevelCounting Output
+	* Time
 	*
 	* 0 if input value is below the threshold 
 	* OR

@@ -1,4 +1,7 @@
-
+/*
+ * $Copyright (c) 2020 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
+ * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Software AG
+ */
 package apamax.analyticsbuilder.custom;
 
 using apama.analyticsbuilder.BlockBase;
@@ -30,11 +33,12 @@ event TimeOffset_$Parameters {
  *
  * Calculate the difference between model time and server clock.
  *
-* @$blockCategory Calculation
+* @$blockCategory Calculations
  */
 event TimeOffset {
 	
-	/**BlockBase object.
+	/**
+	 * BlockBase object.
 	 *
 	 * This is initialized by the framework when the block is required for a model.
 	 */
@@ -59,8 +63,9 @@ event TimeOffset {
 	}
 	
 	/**
-	 * TimeOffset Output
-	 * Server time - model time
+	 * Offset
+	 * 
+	 * offset = Server time - model time
 	 */
 	action<Activation,float> $setOutput_timeOffsetOutput;	// This is initialized by the framework. It sets the output of the block and may trigger any blocks connected to this output.
 }
