@@ -1,3 +1,7 @@
+/*
+ * $Copyright (c) 2020 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
+ * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Software AG
+ */
 
 package apamax.analyticsbuilder.custom;
 
@@ -8,7 +12,10 @@ using apama.analyticsbuilder.Activation;
 /** The parameters for the Root Mean Square block. */
 event RootMeanSquare_$Parameters{
 
-	/**Set Size : the calculation must be done over a set of a certain size
+	/*
+	* Set Size 
+	* 
+	* the calculation must be done over a set of a certain size
 	*
 	* This must be positive.
 	*/
@@ -31,14 +38,15 @@ event RootMeanSquare_$State{
 /**
 * RootMeanSquare
 *
-* Calculates the square root of the mean square (the arithmetic mean of the squares of a set of values)
+* Calculates the square root of the mean square (the arithmetic mean of the squares of a set of values).
 *
 *
-* @$blockCategory Calculation
+* @$blockCategory Calculations
 */
 event RootMeanSquare {
 
-	/**BlockBase object.
+	/**
+	* BlockBase object.
 	*
 	* This is initialized by the framework when the block is required for a model.
 	*/
@@ -100,7 +108,7 @@ event RootMeanSquare {
 
 
 	/**
-	* RootMeanSquare Output
+	* RootMeanSquare
 	*
 	* Result of the calculation
 	*/

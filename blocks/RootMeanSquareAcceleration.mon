@@ -1,4 +1,7 @@
-
+/*
+ * $Copyright (c) 2020 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
+ * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Software AG
+ */
 package apamax.analyticsbuilder.custom;
 
 using apama.analyticsbuilder.BlockBase;
@@ -12,25 +15,37 @@ using apama.analyticsbuilder.TimerParams;
 /** The parameters for the RootMeanSquareAcceleration block. */
 event RootMeanSquareAcceleration_$Parameters{
 
-	/**Defines the low frequency of the bandwidth
+	/**
+	* Low Frequency
+	* 
+	* Defines the low frequency of the bandwidth
 	*
 	* This is a float, must be a finite value
 	*/
 	float frequencyL;
 	
-	/**Defines the high frequency of the bandwidth
+	/**
+	* High Frequency
+	* 
+	* Defines the high frequency of the bandwidth
 	*
 	* This is a float, must be a finite value
 	*/
 	float frequencyH;
 	
-	/**Defines the Acceleration Spectral Density of the low frequency
+	/**
+	* ASDL
+	* 
+	* Defines the Acceleration Spectral Density of the low frequency
 	*
 	* This is a float, must be a finite value
 	*/
 	float ASDL;
 
-	/**Defines the Acceleration Spectral Density of the high frequency
+	/**
+	* ASDH
+	* 
+	* Defines the Acceleration Spectral Density of the high frequency
 	*
 	* This is a float, must be a finite value
 	*/
@@ -56,13 +71,14 @@ event RootMeanSquareAcceleration_$Parameters{
 /**
 * RootMeanSquareAcceleration
 *
-*  Calculates the root-mean-square acceleration (Grms) response from a random vibration ASD curve.
+* Calculates the root-mean-square acceleration (Grms) response from a random vibration ASD curve.
 *
-* @$blockCategory Calculation
+* @$blockCategory Calculations
 */
 event RootMeanSquareAcceleration {
 
-	/**BlockBase object.
+	/**
+	* BlockBase object.
 	*
 	* This is initialized by the framework when the block is required for a model.
 	*/
@@ -109,9 +125,9 @@ event RootMeanSquareAcceleration {
 	}
 
 	/**
-	* RootMeanSquareAcceleration Output
+	* Grms
 	*
-	* Grms based on the parameters value
+	* The root mean square acceleration (Grms) is the square root of the area under the ASD curve in the frequency domain. 
 	*/
 	action<Activation,float> $setOutput_Grms;	// This is initialized by the framework. It sets the output of the block and may trigger any blocks connected to this output.
 
