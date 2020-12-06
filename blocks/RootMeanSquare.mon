@@ -12,10 +12,10 @@ using apama.analyticsbuilder.Activation;
 /** The parameters for the Root Mean Square block. */
 event RootMeanSquare_$Parameters{
 
-	/*
-	* Set Size 
+	/** 
+	* Window Size 
 	* 
-	* the calculation must be done over a set of a certain size
+	* The calculation must be done over a window of a certain size
 	*
 	* This must be positive.
 	*/
@@ -108,9 +108,9 @@ event RootMeanSquare {
 
 
 	/**
-	* RootMeanSquare
+	* RMS
 	*
-	* Result of the calculation
+	* Result of the root mean square calcuation calculation
 	*/
 	action<Activation,float> $setOutput_rootMeanSquareOutput;	// This is initialized by the framework. It sets the output of the block and may trigger any blocks connected to this output.
 }
