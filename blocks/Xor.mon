@@ -1,4 +1,7 @@
-
+/*
+ * $Copyright (c) 2020 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
+ * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Software AG
+ */
 package apamax.analyticsbuilder.custom;
 
 using apama.analyticsbuilder.BlockBase;
@@ -7,7 +10,7 @@ using apama.analyticsbuilder.Activation;
 /**
  * XOR
  *
- * Perform a XOR gate over two connected inputs.
+ * Performs a logical 'xor' on the inputs.
  *
  * Only generates an output if both the inputs receive a value.
  *
@@ -22,14 +25,10 @@ event Xor {
 	BlockBase $base;
 	
 	/**
-	 * This action receives the input values and contains the logic of the block. 
-	 *
-	 * It performs a XOR Gate operator between the inputs in this method. 
-	 *  
 	 * @param $activation The current activation, contextual information required when generating a block output. Blocks should only use the
 	 * <tt>Activation</tt> object passed to them from the framework, never creating their own or holding on to an <tt>Activation</tt> object.
-	 * @param $input_value1 First input to the block.
-	 * @param $input_value2 Second input to the block.
+	 * @param $input_value1 First input value to the block.
+	 * @param $input_value2 Second input value to the block.
 	 *
 	 * @$inputName value1 Value 1
 	 * @$inputName value2 Value 2
@@ -43,7 +42,7 @@ event Xor {
 	
 	
 	/**
-	 * XOR Output
+	 * XOR
 	 *
 	 * Result of performing a XOR over the two inputs. False if both inputs are true or false, True otherwise.
 	 */
