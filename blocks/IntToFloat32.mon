@@ -7,13 +7,26 @@ using apama.analyticsbuilder.Activation;
 /**
 * IntToFloat32
 *
-* convert 32 bits stored in an integer to the corresponding IEEE754 float
+* Convert 32 bits stored in an integer to the corresponding IEEE754 float.
 *
-* @$blockCategory Utility
+* This is useful when working with Modbus as Modbus only defines integer signals but some devices 
+* actually send float values. The bits from the integer will be extracted and converted into the 
+* corresponding 32-Bit float according to the IEEE754 standard.
+*
+* The 32 bits are
+*
+* 00-22 fraction
+*
+* 23-30 exponent
+*
+* 31-31 sign
+* 
+* @$blockCategory Utilities
 */
 event IntToFloat32 {
 
-	/**BlockBase object.
+	/**
+	* BlockBase object.
 	*
 	* This is initialized by the framework when the block is required for a model.
 	*/
@@ -26,7 +39,8 @@ event IntToFloat32 {
 	*  
 	* @param $activation The current activation, contextual information required when generating a block output. Blocks should only use the
 	* <tt>Activation</tt> object passed to them from the framework, never creating their own or holding on to an <tt>Activation</tt> object.
-	* @param $input_value : integer.
+	* 
+	* @param $input_value The 32 bit integer containing the IEEE754 float
 	*
 	* @$inputName value Integer
 	*/
@@ -95,7 +109,7 @@ event IntToFloat32 {
 		return fraction;
 	}
 	/**
-	* IntToFloat32 Output
+	* Float.
 	*
 	* Resulting float.
 	*/
