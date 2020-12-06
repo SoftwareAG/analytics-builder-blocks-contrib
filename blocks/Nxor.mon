@@ -25,6 +25,7 @@ event Nxor {
 	BlockBase $base;
 	
 	/**
+	 *	
 	 * @param $activation The current activation, contextual information required when generating a block output. Blocks should only use the
 	 * <tt>Activation</tt> object passed to them from the framework, never creating their own or holding on to an <tt>Activation</tt> object.
 	 * @param $input_value1 First input to the block.
