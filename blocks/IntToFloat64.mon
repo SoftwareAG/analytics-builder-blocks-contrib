@@ -7,9 +7,21 @@ using apama.analyticsbuilder.Activation;
 /**
 * IntToFloat64
 *
-* convert 64 bits stored in an integer to the corresponding IEEE754 float
+* Convert 64 bits stored in an integer to the corresponding IEEE754 float.
 *
-* @$blockCategory Utility
+* This is useful when working with Modbus as Modbus only defines integer signals but some devices 
+* actually send float values. The bits from the integer will be extracted and converted into the 
+* corresponding 64-Bit float according to the IEEE754 standard.
+*
+* The 64 bits are
+*
+* 00-51 fraction
+*
+* 52-62 exponent
+*
+* 63-63 sign
+* 
+* @$blockCategory Utilities
 */
 event IntToFloat64 {
 
@@ -26,7 +38,8 @@ event IntToFloat64 {
 	*  
 	* @param $activation The current activation, contextual information required when generating a block output. Blocks should only use the
 	* <tt>Activation</tt> object passed to them from the framework, never creating their own or holding on to an <tt>Activation</tt> object.
-	* @param $input_value : integer.
+	* 
+	* @param $input_value The 64 bit integer containing the IEEE754 float
 	*
 	* @$inputName value Integer
 	*/
@@ -98,7 +111,7 @@ event IntToFloat64 {
 		return fraction;
 	}
 	/**
-	* IntToFloat64 Output
+	* Float.
 	*
 	* Resulting float.
 	*/
