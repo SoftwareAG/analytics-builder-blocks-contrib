@@ -117,7 +117,7 @@ event SendEmail {
 	* @param $activation The current activation, contextual information required when generating a block output. Blocks should only use the
 	* <tt>Activation</tt> object passed to them from the framework, never creating their own or holding on to an <tt>Activation</tt> object.
 	*
-	* @param $input_send Signals that a new measurement is to be created.
+	* @param $input_send Signals that a new email is to be created.
 	*
 	* @$inputName send Send
 	*/
