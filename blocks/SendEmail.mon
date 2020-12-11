@@ -1,0 +1,157 @@
+/*
+ * $Copyright (c) 2020 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
+ * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Software AG
+ */
+package apamax.analyticsbuilder.custom;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+using com.apama.json.JSONPlugin;
+using com.apama.exceptions.Exception;
+using com.apama.util.AnyExtractor;
+using apama.analyticsbuilder.L10N;
+
+
+
+/** The parameters for the SendEmail block. */
+event SendEmail_$Parameters{
+
+	/**
+	** Receivers
+	*
+	* Receiver(s) of the email. If mutlitple receivers, separate them with a colon or semi-colon.
+	* 
+	*/
+	string receivers;
+
+	/**
+	* Reply To 
+	*
+	* Email adress to use for replying to the email.
+	* 
+	*/
+	string replyTo;
+	
+	/**
+	* Subject 
+	*
+	* Subject of the email.
+	* 
+	*/
+	string subject;
+	
+	/**
+	* Body 
+	*
+	* Text to use in the body of the email.
+	* 
+	*/
+	string text;
+	
+	/**
+	* Bcc 
+	*
+	* Hidden receivers of the email. If mutlitple receivers, separate them with a colon or semi-colon.
+	* 
+	*/
+	optional<string> bcc;
+
+	/**
+	* Cc 
+	*
+	* Receivers copied to the email. If mutlitple receivers, separate them with a colon or semi-colon.
+	* 
+	*/
+	optional<string> cc;
+	
+	action $validate() {
+		if  receivers = "" {
+			throw L10N.getLocalizedException("fwk_param_undefined_receivers_value", [BlockBase.getL10N_param("receivers",self),receivers]);
+		}
+		if replyTo = "" {
+			throw L10N.getLocalizedException("fwk_param_undefined_replyTo_value", [BlockBase.getL10N_param("replyTo",self),replyTo]);
+		}
+	}
+}
+
+
+/**
+* Send Email
+*
+* Send an email with a specified subject and body to a list of recipients
+*
+* @$blockCategory Utilities
+*/
+event SendEmail {
+
+	/**BlockBase object.
+	*
+	* This is initialized by the framework when the block is required for a model.
+	*/
+	BlockBase $base;
+
+	/** Parameters, filled in by the framework. */
+	SendEmail_$Parameters $parameters;
+	
+	string receivers;
+	string replyTo;
+	string subject;
+	string text;
+	
+	optional<string> bcc;
+	optional<string> cc;
+	
+	/** Called once at block start up. */
+	action $init() {
+		receivers := $parameters.receivers;
+		replyTo := $parameters.replyTo;
+		subject := $parameters.subject;
+		text := $parameters.text;
+		cc := $parameters.cc;
+		bcc := $parameters.bcc;
+	}
+
+
+	/**
+	*
+	* @param $activation The current activation, contextual information required when generating a block output. Blocks should only use the
+	* <tt>Activation</tt> object passed to them from the framework, never creating their own or holding on to an <tt>Activation</tt> object.
+	*
+	* @param $input_send Signals that a new measurement is to be created.
+	*
+	* @$inputName send Send
+	*/
+	action $process(Activation $activation, boolean $input_send) {
+		com.apama.cumulocity.SendEmail se := new com.apama.cumulocity.SendEmail;
+		ifpresent bcc {
+			se.bcc := bcc.replaceAll(" ", "");	
+		}
+		ifpresent cc {
+			se.cc := parseEmailAddress(cc);
+		}
+		
+		se.receiver := parseEmailAddress(receivers);
+		se.replyTo := replyTo.replaceAll(" ","");
+		se.subject := subject;
+		se.text := text;
+		log "Send email " + se.toString();
+		send se to com.apama.cumulocity.SendEmail.SEND_CHANNEL;
+	}
+
+
+	action parseEmailAddress(string text) returns sequence<string>
+	{
+		sequence<string> parsed;
+		text := text.replaceAll(" ","");
+		if text.find(";") > -1 {
+			parsed := ";".split(text);
+		} else
+		{
+			parsed :=",".split(text);	
+		}
+		return parsed;
+	}
+	
+	/**Defines type for input sample.*/
+	constant string $INPUT_TYPE_send := "pulse";
+}
