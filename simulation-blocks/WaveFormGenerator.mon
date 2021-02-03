@@ -1,7 +1,13 @@
 /*
- * $Copyright (c) 2020 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
+ * $Copyright (c) 2020-2021 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
  * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Software AG
  */
+
+/*********
+ * Note: this block is now available in 10.9.0.x or later of Analytics Builder as
+ * part of the product.  The below is for reference use only, we recommend using
+ * the product block where applicable.
+ ********/
 
 package apamax.analyticsbuilder.blocks.simulation;
 
