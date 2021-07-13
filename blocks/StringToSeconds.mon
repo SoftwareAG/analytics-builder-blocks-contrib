@@ -29,7 +29,7 @@ event StringToSeconds_$Parameters {
 /**
 * StringToSeconds
 *
-* parses the input string to to seconds since 01.01.1970 using the provided format
+* parses the input string to seconds since 01.01.1970 using the provided format
 * 
 * @$blockCategory Utilities
 */
