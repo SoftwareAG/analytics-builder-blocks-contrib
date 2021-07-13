@@ -1,0 +1,75 @@
+/*
+ * $Copyright (c) 2020-2021 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
+ * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Software AG
+ */
+package apamax.analyticsbuilder.custom;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+using com.apama.correlator.timeformat.TimeFormat;
+
+/**
+* Event definition of the parameters for the StringToSeconds block.
+*/
+event StringToSeconds_$Parameters {
+	
+	/**
+	 * Format.
+	 *
+	 * A valid timestamp format. e.g.: "yyyy-MM-dd'T'HH:mm:ssZ"
+	 */
+	string format;
+
+	/** Validate that the values for all the parameters have been provided. */
+	action $validate() {
+		BlockBase.throwsOnEmpty(format, "format", self);
+	}
+}
+
+/**
+* StringToSeconds
+*
+* parses the input string to to seconds since 01.01.1970 using the provided format
+* 
+* @$blockCategory Utilities
+*/
+event StringToSeconds {
+
+	/**
+	* BlockBase object.
+	*
+	* This is initialized by the framework when the block is required for a model.
+	*/
+	BlockBase $base;
+	
+	/**The parameters for the block.*/
+	StringToSeconds_$Parameters $parameters;
+
+	/**
+	* This action receives the input values and contains the logic of the block. 
+	*
+	* It performs the byte switching of the integer.
+	*  
+	* @param $activation The current activation, contextual information required when generating a block output. Blocks should only use the
+	* <tt>Activation</tt> object passed to them from the framework, never creating their own or holding on to an <tt>Activation</tt> object.
+	* 
+	* @param $input_value The String to be parsed to seconds since 01.01.1970
+	*
+	* @$inputName value Timestamp
+	*/
+	action $process(Activation $activation, string $input_value) {
+		$setOutput_floatOutput($activation, parseTimestamp($input_value));
+	}
+
+	action parseTimestamp(string value) returns float {
+		TimeFormat format := new TimeFormat;
+		return format.parseTimeUTC($parameters.format, value);
+	}
+
+	/**
+	* Float.
+	*
+	* seconds since 01.01.1970
+	*/
+	action<Activation,float> $setOutput_floatOutput;	// This is initialized by the framework. It sets the output of the block and may trigger any blocks connected to this output.
+}
