@@ -9,9 +9,9 @@ using apama.analyticsbuilder.Activation;
 using com.apama.correlator.timeformat.TimeFormat;
 
 /**
-* Event definition of the parameters for the StringToSeconds block.
+* Event definition of the parameters for the Date Time String To Seconds block.
 */
-event StringToSeconds_$Parameters {
+event DateTimeStringToSeconds_$Parameters {
 	
 	/**
 	 * Format.
@@ -27,13 +27,13 @@ event StringToSeconds_$Parameters {
 }
 
 /**
-* StringToSeconds
+* Date Time String To Seconds
 *
 * parses the input string to seconds since 01.01.1970 using the provided format
 * 
 * @$blockCategory Utilities
 */
-event StringToSeconds {
+event DateTimeStringToSeconds {
 
 	/**
 	* BlockBase object.
@@ -43,7 +43,7 @@ event StringToSeconds {
 	BlockBase $base;
 	
 	/**The parameters for the block.*/
-	StringToSeconds_$Parameters $parameters;
+	DateTimeStringToSeconds_$Parameters $parameters;
 
 	/**
 	* This action receives the input values and contains the logic of the block. 
