@@ -1,5 +1,5 @@
 /*
- * $Copyright (c) 2018-2021 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
+ * $Copyright (c) 2018-2023 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
  * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Software AG
  */
 package apamax.analyticsbuilder.blocks;
@@ -11,9 +11,8 @@ using apama.analyticsbuilder.TimerParams;
 using com.apama.exceptions.Exception;
 using apama.analyticsbuilder.L10N;
 using apama.analyticsbuilder.Promise;
-using apama.analyticsbuilder.cumulocity.inventory.InventoryLookup;
-using apama.analyticsbuilder.cumulocity.inventory.InventoryLookupResult;
-using apama.analyticsbuilder.cumulocity.inventory.InputHelper;
+using apama.analyticsbuilder.cumulocity.CumulocityInputParams;
+using apama.analyticsbuilder.cumulocity.CumulocityInputHandler;
 using apama.analyticsbuilder.Partition_Broadcast;
 using apama.analyticsbuilder.Configuration;
 using apama.analyticsbuilder.ConfigurationProperty;
@@ -68,17 +67,21 @@ event TimeTicker{
 
 	/**The parameters for the block. */
 	TimeTicker_$Parameters $parameters;
+	 /** The input handler for scheduling input events. */
+	CumulocityInputHandler inputHandler;
 	
-	/**All the devices for which block will be listening. @private */
-	sequence<string> devices; // set by reflection in InputHelper
-	boolean isGroup; // set by reflection in InputHelper
-	boolean isBroadcastDevice; // set by reflection in InputHelper
-
 	action $validate(dictionary<string, any> $modelScopeParameters) returns Promise {
 	
-		InputHelper ihelper := InputHelper.forBlock(self, $modelScopeParameters);
-		
-		return InventoryLookup.lookup($parameters.deviceId).andThen(returnNull);
+	    CumulocityInputParams params := CumulocityInputParams
+        	.create($parameters.deviceId, self, "")
+        	.withFields(new dictionary<string,any>);
+	    
+	    
+	    return params.declare(inputHandlerCreated);
+	}
+
+	action inputHandlerCreated(CumulocityInputHandler inputHandler) {
+	    self.inputHandler := inputHandler;
 	}
 	
 	action returnNull(any a) returns any {
@@ -95,13 +98,13 @@ event TimeTicker{
 	 */
 	action $init() {
 		string id;
-		for id in devices{
+		for id in inputHandler.devices{
 			try {
 				TimerParams tp := TimerParams.recurring($parameters.periodSecs);
-				if(isGroup) {
+				if(inputHandler.isGroup) {
 					tp := tp.withPartition(id);
 				}
-				else if(isBroadcastDevice) {
+				else if(inputHandler.isBroadcast) {
 					tp := tp.withPartition(Partition_Broadcast(id));
 				} else {
 					tp := tp.withPartition(id);
@@ -118,6 +121,7 @@ event TimeTicker{
 	 * @param value value to be put on the wire.
 	 */
 	action $timerTriggered(Activation $activation, TimeTicker_$State $blockState) {
+		log "TIMER TRIGGERED" at INFO;
 		$blockState.counter := $blockState.counter + 1.0;
 		$setOutput_value($activation, $blockState.counter);
 	}
