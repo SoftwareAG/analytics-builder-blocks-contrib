@@ -83,14 +83,6 @@ event TimeTicker{
 	action inputHandlerCreated(CumulocityInputHandler inputHandler) {
 	    self.inputHandler := inputHandler;
 	}
-	
-	action returnNull(any a) returns any {
-		return new any;
-	}
-
-	action throwNoDevices(string nameOrId) {
-		throw L10N.getLocalizedException("blk_apama.analyticskit.blocks.cumulocity.TimeTicker_no_devices", [<any> nameOrId]);
-	}
 
 	/**
 	 * Method starts listening for the events from Cumulocity 
