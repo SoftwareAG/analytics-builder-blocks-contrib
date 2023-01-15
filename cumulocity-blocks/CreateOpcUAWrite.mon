@@ -1,5 +1,5 @@
 /*
- * $Copyright (c) 2018-2021 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
+ * $Copyright (c) 2018-2023 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
  * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Software AG
  */
 package apamax.analyticskit.blocks.cumulocity;
@@ -12,9 +12,8 @@ using apama.analyticsbuilder.Partition_Broadcast;
 
 using com.apama.cumulocity.Operation;
 using com.apama.exceptions.Exception;
-using apama.analyticsbuilder.cumulocity.inventory.InventoryLookup;
-using apama.analyticsbuilder.cumulocity.inventory.InventoryLookupResult;
-using apama.analyticsbuilder.cumulocity.inventory.OutputHelper;
+using apama.analyticsbuilder.cumulocity.CumulocityOutputParams;
+using apama.analyticsbuilder.cumulocity.CumulocityOutputHandler;
 using apama.analyticsbuilder.Promise;
 
 /** The parameters for the CreateOperationStaticValue block. */
@@ -83,33 +82,26 @@ event CreateOpcUAWrite {
 	/** The parameters for the block. */
 	CreateOpcUAWrite_$Parameters $parameters;
 	/** Sends to the 'current' device from the activation's partition: */
-	boolean currentDevice;
-	boolean isBroadcastDevice; // set by reflection in OutputHelper
-	/** The current deviceId, if currentDevice is false */
-	string deviceId;
+	CumulocityOutputHandler outputHandler;
+
+
 	action $validate() returns Promise {
-		switch($parameters.deviceId as dev) {
-			case string: {
-				deviceId := dev;	
-			}
-			default: {
-				currentDevice := true;
-			}
-		}
-		
-		OutputHelper helper := OutputHelper.forBlock(self);
-		helper.setAsyncOutput($parameters.deviceId, Operation.getName());
-		
-		return InventoryLookup.lookup($parameters.deviceId).andThen(helper.declareOutput);
+	    // Creating an CumulocityOutputParams object
+	    CumulocityOutputParams params := CumulocityOutputParams.forAsyncEventType($parameters.deviceId, 
+	                                            self, Operation.getName());
+	    // Declare the output stream and provide callback action to save the output handler object.
+	    // Return the Promise returned from the declare call.
+	    return params.declare(handlerCreated);
+
 	}
 	
-	action $init() {
-		switch($parameters.deviceId as dev) {
-			case string: { deviceId := dev; }
-			default: { currentDevice := true; }
-		}
+	/** Callback action to receive and save CumulocityOutputHandler object.
+	 * @param cumulocityOutputHandler the handler object
+	 */
+	action handlerCreated(CumulocityOutputHandler cumulocityOutputHandler) {
+	    outputHandler := cumulocityOutputHandler;
 	}
-	
+
 	/**
 	 * Create and send operation to the device.
 	 * @param $activation The current activation.
@@ -118,41 +110,29 @@ event CreateOpcUAWrite {
 	 */
 	action $process(Activation $activation, boolean $input_createOperation, dictionary<string, any> $modelScopeParameters) {
 		if $input_createOperation {
-			string modelNameIdentifier := apama.analyticsbuilder.ABConstants.MODEL_NAME_IDENTIFIER;
-			any modelName := new any;
-			if $modelScopeParameters.hasKey(modelNameIdentifier) {
-				modelName := $modelScopeParameters[modelNameIdentifier];
-			}
-			
-			Operation op := new Operation;
-	        string name := "CreateOpcUAWrite";
-			op.source := deviceId;
-	        op.status := "PENDING";
-	 
-	        dictionary<string,any> value := {"value":any(string,$parameters.value)};
-	        dictionary<string,any> myParam := {$parameters.nodeId: value };
-	        dictionary<string,any> myValues := {"values": myParam };
-	        dictionary<string,any> commandWrite := {"c8y_ua_command_WriteValue":myValues};
-	 
-	        op.params := commandWrite;
-	        op.params.add("deviceID",deviceId);
-	        op.params.add("description",$parameters.description);
+			ifpresent outputHandler.deviceToOutput($activation) as device {
+				string modelNameIdentifier := apama.analyticsbuilder.ABConstants.MODEL_NAME_IDENTIFIER;
+				any modelName := new any;
+				if $modelScopeParameters.hasKey(modelNameIdentifier) {
+					modelName := $modelScopeParameters[modelNameIdentifier];
+				}
+				
+				Operation op := new Operation;
+		        string name := "CreateOpcUAWrite";
+				op.source := device;
+		        op.status := "PENDING";
+		 
+		        dictionary<string,any> value := {"value":any(string,$parameters.value)};
+		        dictionary<string,any> myParam := {$parameters.nodeId: value };
+		        dictionary<string,any> myValues := {"values": myParam };
+		        dictionary<string,any> commandWrite := {"c8y_ua_command_WriteValue":myValues};
+		 
+		        op.params := commandWrite;
+		        op.params.add("deviceID",device);
+		        op.params.add("description",$parameters.description);
 
-			
-			switch($activation.partition as part) {
-				case Partition_Broadcast: {
-					if not isBroadcastDevice { return; }
-				}
-				case string: {
-					if currentDevice { op.source := part; }
-				}
-				default: {
-					if currentDevice { return; }
-				}
+				outputHandler.sendOutput(op,Operation.SEND_CHANNEL,$activation);	
 			}
-
-			send op to Operation.CHANNEL;
-			$base.profile(BlockBase.PROFILE_OUTPUT);
 		}
 	}
 	
