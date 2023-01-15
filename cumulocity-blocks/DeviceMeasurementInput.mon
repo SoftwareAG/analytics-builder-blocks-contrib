@@ -105,21 +105,17 @@ event DeviceMeasurementInput{
 	DeviceMeasurementInput_$Parameters $parameters;
 	
 	/**All the devices for which block will be listening. @private */
-	sequence<string> devices; // set by reflection in InputHelper
 	string fragment;
 	string series;
 
 	boolean ignoreTimestamp; // always false in simulation mode, else $parameters.ignoreTimestamp
-
-	// latest timestamp assigned to input events - iff ignoreTimestamp set. While this is state, we only use it as a tiebreaker
-	// if we receive events at the same model time.  We don't care about it being independent across different partitions,
-	// nor persisted across correlator instances.
-	float timeValue;
 	
 	/** Input handler for schedule a timer @private */
 	CumulocityInputHandler inputHandler;	
+	string modelName;
 
 	action $validate(dictionary<string, any> $modelScopeParameters) returns Promise {
+		modelName := $modelScopeParameters[ABConstants.MODEL_NAME_IDENTIFIER].valueToString();
 		if $modelScopeParameters.getOrDefault(ABConstants.MODE_IDENTIFIER).valueToString() = ABConstants.MODE_SIMULATION {
 			ignoreTimestamp := false;
 		} else {
@@ -143,7 +139,7 @@ event DeviceMeasurementInput{
 	 */
 	action $init() {
 		string id;
-		for id in devices{
+		for id in inputHandler.getDevices() {
 			on all MeasurementFragment(source = id, fragment = fragment, series= series) as e{
 				extractMeasurement(e);
 			}
