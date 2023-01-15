@@ -92,6 +92,7 @@ event DeviceMeasurementInput_$Parameters{
  * Note: when running in simulation mode, because historical input data is used, timestamps are not ignored.
  *
  * @$blockCategory Input
+ * @$consumesInput
  * @$blockType c8y_Input
  * @$derivedName $fragmentSeries Measurement
  * @$titleIsDerived true

@@ -81,6 +81,7 @@ event CreateMeasurement_$Parameters {
  * Non-finite values are ignored.
  *
  * @$blockCategory Output
+ * @$producesOutput
  * @$blockType c8y_Output
  * @$derivedName $fragment Measurement
  * @$titleIsDerived true

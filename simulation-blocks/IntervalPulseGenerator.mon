@@ -52,6 +52,7 @@ event IntervalPulseGenerator_$Parameters {
 * Generates a pulse in a configurable interval.
 *
 * @$blockCategory Input
+* @$consumesInput
 * @$blockType c8y_Input
 */
 event IntervalPulseGenerator {

@@ -72,6 +72,7 @@ event CreateOpcUAWrite_$Parameters {
  * node id and parameters.
  * 
  * @$blockCategory Output
+ * @$producesOutput
  * @$blockType c8y_Output
  * @$derivedName OperationOPC $OperationOPC
  * @$titleIsDerived true
