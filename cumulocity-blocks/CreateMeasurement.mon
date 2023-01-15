@@ -1,5 +1,5 @@
 /*
- * $Copyright (c) 2018-2021 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
+ * $Copyright (c) 2018-2023 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
  * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Software AG
  */
 
@@ -18,8 +18,8 @@ using apama.analyticsbuilder.Partition_Broadcast;
 using com.apama.cumulocity.Measurement;
 using com.apama.cumulocity.MeasurementValue;
 using com.apama.exceptions.Exception;
-using apama.analyticsbuilder.cumulocity.inventory.InventoryLookup;
-using apama.analyticsbuilder.cumulocity.inventory.OutputHelper;
+using apama.analyticsbuilder.cumulocity.CumulocityOutputParams;
+using apama.analyticsbuilder.cumulocity.CumulocityOutputHandler;
 using apama.analyticsbuilder.Promise;
 
 event CreateMeasurement_$Parameters {
@@ -91,31 +91,28 @@ event CreateMeasurement {
 	/** Whether to send a new output on every (valid) value. */
 	boolean createOnEveryValidValue;
 	/** Sends to the 'current' device from the activation's partition: */
-	boolean currentDevice;
-	boolean isBroadcastDevice; // set by reflection in OutputHelper
-	/** The current deviceId, if currentDevice is false */
-	string deviceId;
+	CumulocityOutputHandler outputHandler;
+	
 	action $init() {
 		createOnEveryValidValue :=  ($base.getInputCount("send") = 0);
 	}
+	
 	action $validate() returns Promise {
-		
-		switch($parameters.deviceId as dev) {
-			case string: {
-				deviceId := dev;
-			}
-			default: {
-				currentDevice := true;
-			}
-		}
-		
 		dictionary<string, any> fields := {"fragment":<any>$parameters.fragment, "series":$parameters.series};
-		
-		OutputHelper helper := OutputHelper.forBlock(self);
-		helper.setSyncOutput($parameters.deviceId, Measurement.getName(), fields);
-		
-		return InventoryLookup.lookup($parameters.deviceId).andThen(helper.declareOutput);
+	    // Creating an CumulocityOutputParams object
+	    CumulocityOutputParams params := CumulocityOutputParams.forSyncEventType($parameters.deviceId, 
+	                                            self, Measurement.getName(), fields);
+	    // Declare the output stream and provide callback action to save the output handler object.
+	    // Return the Promise returned from the declare call.
+	    return params.declare(handlerCreated);
 	}
+	/** Callback action to receive and save CumulocityOutputHandler object.
+	 * @param cumulocityOutputHandler the handler object
+	 */
+	action handlerCreated(CumulocityOutputHandler cumulocityOutputHandler) {
+	    outputHandler := cumulocityOutputHandler;
+	}
+
 	
 	/**
 	 * Process an activation.
@@ -131,35 +128,21 @@ event CreateMeasurement {
 			// just use activation's timestamp if not connected:
 			$input_time := $activation.timestamp;
 		}
-		ifpresent $input_value, $input_time {
-			validValue := $input_value.isFinite();
-			if validValue and (createOnEveryValidValue or $input_send) {
-				Measurement m := new Measurement;
-				m.type := $parameters.fragment; // while type is required, it's mostly ignored, and typically the fragment name.
-				
-				m.source := deviceId;
-				switch($activation.partition as part) {
-					case Partition_Broadcast: {
-						if not isBroadcastDevice { return; }
-					}
-					case string: {
-						if currentDevice { m.source := part; }
-					}
-					default: {
-						if currentDevice { return; }
-					}
+		ifpresent outputHandler.deviceToOutput($activation) as device, $input_time {
+			ifpresent $input_value {
+				validValue := $input_value.isFinite();
+				if validValue and (createOnEveryValidValue or $input_send) {
+					Measurement m := new Measurement;
+					m.type := $parameters.fragment; // while type is required, it's mostly ignored, and typically the fragment name.
+					m.source := device;
+					
+					MeasurementValue mv := new MeasurementValue;
+					mv.value := $input_value;
+					ifpresent $parameters.unit as unit { mv.unit := unit; }
+					m.measurements := {$parameters.fragment:{$parameters.series:mv}};
+					m.time := $input_time;
+					outputHandler.sendOutput(m,Measurement.SEND_CHANNEL,$activation);
 				}
-				
-				MeasurementValue mv := new MeasurementValue;
-				mv.value := $input_value;
-				ifpresent $parameters.unit as unit { mv.unit := unit; }
-				m.measurements := {$parameters.fragment:{$parameters.series:mv}};
-				m.time := $input_time;
-				
-				route m;
-				m.params[apama.analyticsbuilder.ABConstants.MODEL_NAME_IDENTIFIER] := $modelScopeParameters.getOrDefault(apama.analyticsbuilder.ABConstants.MODEL_NAME_IDENTIFIER);
-				send m to Measurement.CREATE_CHANNEL;
-				$base.profile(BlockBase.PROFILE_OUTPUT);
 			}
 		}
 	}
