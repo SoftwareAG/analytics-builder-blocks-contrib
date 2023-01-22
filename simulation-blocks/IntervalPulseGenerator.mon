@@ -1,5 +1,5 @@
 /*
- * $Copyright (c) 2020-2021 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
+ * $Copyright (c) 2020-2023 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
  * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Software AG
  */
 package apamax.analyticsbuilder.blocks.simulation;
@@ -13,22 +13,11 @@ using apama.analyticsbuilder.L10N;
 using com.apama.cumulocity.ManagedObject;
 using com.apama.exceptions.Exception;
 using apama.analyticsbuilder.Promise;
-using apama.analyticsbuilder.cumulocity.CumulocityInputHandler;
-using apama.analyticsbuilder.cumulocity.CumulocityInputParams;
+using apama.analyticsbuilder.Partition_Broadcast;
 
 
 event IntervalPulseGenerator_$Parameters {
 	
-	/**
-	 * Device.
-	 *
-	 * The device for which a measurement is produced.
-	 *
-	 * The model editor uses the current device. This is mapped internally to the inventory identifier.
-	 * @$semanticType c8y_deviceId
-	 */
-	string deviceId;
-
 	/**
 	 * Interval (s).
 	 *
@@ -51,45 +40,31 @@ event IntervalPulseGenerator_$Parameters {
 *
 * Generates a pulse in a configurable interval.
 *
-* @$blockCategory Input
-* @$consumesInput
-* @$blockType c8y_Input
+* @$blockCategory Utilities
 */
 event IntervalPulseGenerator {
 			
 	BlockBase $base;
 	IntervalPulseGenerator_$Parameters $parameters;
-
-	/** Input handler for schedule a timer @private */
-	CumulocityInputHandler inputHandler;	
-
-	action $validate(dictionary<string, any> $modelScopeParameters) returns Promise {
-		
-		CumulocityInputParams c8yInputParams := CumulocityInputParams.create($parameters.deviceId, self, "").withFields(new dictionary<string,any>);
-		return c8yInputParams.declare(inputHandlerCreated);
-	}
-
-	action inputHandlerCreated(CumulocityInputHandler inputHandler) {
-	    self.inputHandler := inputHandler;
-	}
 	
 	action $init() {
-		TimerParams tp := TimerParams.recurring($parameters.interval);
+		Partition_Broadcast broadcast := new Partition_Broadcast;
+		TimerParams tp := TimerParams.recurring($parameters.interval).withPartition(broadcast);
 		any _ := $base.createTimerWith(tp);
 	}
 	
 	action $timerTriggered(Activation $activation, any $payload) {
-		$setOutput_pulse($activation, Value(true, $base.getModelTime(), new dictionary<string, any>));
+		$setOutput_tick($activation, Value(true, $base.getModelTime(), new dictionary<string, any>));
 	}
 
 	/**
-	 * Pulse.
+	 * Timer Tick.
 	 *
-	 * The generated pulse.
+	 * The generated pulse trigger.
 	 */
-	action<Activation,Value> $setOutput_pulse;	
+	action<Activation,Value> $setOutput_tick;	
 	
-	constant string  $OUTPUT_TYPE_pulse := "pulse";
+	constant string  $OUTPUT_TYPE_tick := "pulse";
 
 	
 }
