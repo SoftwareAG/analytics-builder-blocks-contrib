@@ -13,10 +13,20 @@ using apama.analyticsbuilder.L10N;
 using com.apama.cumulocity.ManagedObject;
 using com.apama.exceptions.Exception;
 using apama.analyticsbuilder.Promise;
-using apama.analyticsbuilder.Partition_Broadcast;
+using apama.analyticsbuilder.cumulocity.CumulocityInputHandler;
+using apama.analyticsbuilder.cumulocity.CumulocityInputParams;
 
 
 event IntervalPulseGenerator_$Parameters {
+	/**
+	 * Device or Device Group.
+	 *
+	 * The device or device group from which the measurement has been received.
+	 *
+	 * The model editor uses the current device or asset name. This is mapped internally to the inventory identifier.
+	 * @$semanticType c8y_deviceOrGroupId
+	 */
+	string deviceId;
 	
 	/**
 	 * Interval (s).
@@ -34,6 +44,10 @@ event IntervalPulseGenerator_$Parameters {
 
 }
 
+event IPGDummyEvent {
+	string id;
+	string source;
+}
 	
 /**
 * Interval Pulse Generator.
@@ -46,11 +60,25 @@ event IntervalPulseGenerator {
 			
 	BlockBase $base;
 	IntervalPulseGenerator_$Parameters $parameters;
+	/** Input handler for schedule a timer @private */
+	CumulocityInputHandler inputHandler;	
+
+	action $validate(dictionary<string, any> $modelScopeParameters) returns Promise {
+		CumulocityInputParams c8yInputParams := CumulocityInputParams.create($parameters.deviceId, self, IPGDummyEvent.getName());
+		return c8yInputParams.declare(inputHandlerCreated);
+	}
+	
+	action inputHandlerCreated(CumulocityInputHandler inputHandler) {
+		self.inputHandler := inputHandler;
+	}
+	
 	
 	action $init() {
-		Partition_Broadcast broadcast := new Partition_Broadcast;
-		TimerParams tp := TimerParams.recurring($parameters.interval).withPartition(broadcast);
-		any _ := $base.createTimerWith(tp);
+		string id;
+		for id in inputHandler.getDevices() {
+			TimerParams tp := TimerParams.recurring($parameters.interval).withPartition(inputHandler.partitionForTimer(id));
+			any _ := $base.createTimerWith(tp);
+		}
 	}
 	
 	action $timerTriggered(Activation $activation, any $payload) {
@@ -65,6 +93,5 @@ event IntervalPulseGenerator {
 	action<Activation,Value> $setOutput_tick;	
 	
 	constant string  $OUTPUT_TYPE_tick := "pulse";
-
 	
 }
