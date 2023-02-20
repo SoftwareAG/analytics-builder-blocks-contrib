@@ -1,5 +1,5 @@
-﻿/*
- * $Copyright (c) 2018-2021 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
+/*
+ * $Copyright (c) 2018-2023 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
  * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Software AG
  */
 
@@ -22,8 +22,8 @@ using com.apama.cumulocity.Measurement;
 using com.apama.exceptions.Exception;
 
 using apama.analyticsbuilder.Promise;
-using apama.analyticsbuilder.cumulocity.inventory.InventoryLookup;
-using apama.analyticsbuilder.cumulocity.inventory.InputHelper;
+using apama.analyticsbuilder.cumulocity.CumulocityInputHandler;
+using apama.analyticsbuilder.cumulocity.CumulocityInputParams;
 using apama.analyticsbuilder.Partition_Broadcast;
 
 /**
@@ -92,6 +92,7 @@ event DeviceMeasurementInput_$Parameters{
  * Note: when running in simulation mode, because historical input data is used, timestamps are not ignored.
  *
  * @$blockCategory Input
+ * @$consumesInput
  * @$blockType c8y_Input
  * @$derivedName $fragmentSeries Measurement
  * @$titleIsDerived true
@@ -104,21 +105,17 @@ event DeviceMeasurementInput{
 	DeviceMeasurementInput_$Parameters $parameters;
 	
 	/**All the devices for which block will be listening. @private */
-	sequence<string> devices; // set by reflection in InputHelper
 	string fragment;
 	string series;
-	boolean isGroup; // set by reflection in InputHelper
-	boolean isBroadcastDevice; // set by reflection in InputHelper
 
 	boolean ignoreTimestamp; // always false in simulation mode, else $parameters.ignoreTimestamp
-
-	// latest timestamp assigned to input events - iff ignoreTimestamp set. While this is state, we only use it as a tiebreaker
-	// if we receive events at the same model time.  We don't care about it being independent across different partitions,
-	// nor persisted across correlator instances.
-	float timeValue;
 	
+	/** Input handler for schedule a timer @private */
+	CumulocityInputHandler inputHandler;	
+	string modelName;
 
 	action $validate(dictionary<string, any> $modelScopeParameters) returns Promise {
+		modelName := $modelScopeParameters[ABConstants.MODEL_NAME_IDENTIFIER].valueToString();
 		if $modelScopeParameters.getOrDefault(ABConstants.MODE_IDENTIFIER).valueToString() = ABConstants.MODE_SIMULATION {
 			ignoreTimestamp := false;
 		} else {
@@ -127,21 +124,14 @@ event DeviceMeasurementInput{
 		sequence<string> fragSeries := ".".split($parameters.fragmentSeries);
 		fragment := fragSeries[0];
 		series := fragSeries[1];
-
-		InputHelper ihelper := InputHelper.forBlock(self, $modelScopeParameters);
-		ihelper.setInput($parameters.deviceId, Measurement.getName(), {"fragment":<any>fragment, "series":series});
-
-		return InventoryLookup.lookup($parameters.deviceId).andThen(ihelper.declareInput);
+		
+		CumulocityInputParams c8yInputParams := CumulocityInputParams.create($parameters.deviceId, self, Measurement.getName()).withFields({"fragment":<any>fragment, "series":series});
+		return c8yInputParams.declare(inputHandlerCreated);
 	}
-
-	action throwNoDevices(string nameOrId) {
-		throw L10N.getLocalizedException("blk_apama.analyticskit.blocks.cumulocity.DeviceMeasurementInput_no_devices", [<any> nameOrId]);
+	
+	action inputHandlerCreated(CumulocityInputHandler inputHandler) {
+		self.inputHandler := inputHandler;
 	}
-
-	action setDevices(sequence<string> devs) {
-		devices := devs;
-	}
-
 	
 	/**
 	 * Method starts listening for the events from Cumulocity IoT 
@@ -149,7 +139,7 @@ event DeviceMeasurementInput{
 	 */
 	action $init() {
 		string id;
-		for id in devices{
+		for id in inputHandler.getDevices() {
 			on all MeasurementFragment(source = id, fragment = fragment, series= series) as e{
 				extractMeasurement(e);
 			}
@@ -164,48 +154,11 @@ event DeviceMeasurementInput{
 	 */
 	action extractMeasurement(MeasurementFragment measurement) {
 		if not (measurement.params.hasKey(apama.analyticsbuilder.ABConstants.MODEL_NAME_IDENTIFIER)) {
-			try {
-				if not ignoreTimestamp {
-					if measurement.time  < $base.getModelTime()  {
-						$base.droppedEvent(measurement, measurement.time);
-						return;
-					}
-				}
-				Value value := new Value;
-				value.value := measurement.value;
-
-				float timerDelay;
-				if ignoreTimestamp {
-					timeValue := float.max(timeValue, $base.getModelTime()).nextAfter(float.INFINITY);
-					timerDelay := timeValue;
-					value.timestamp := timeValue;
-				}
-				else {
-					timerDelay := measurement.time;
-					value.timestamp := measurement.time;
-				}
-				string k;
-				for k in measurement.params.keys()  {
-					value.properties["measurement_"+k] := measurement.params[k]; 
-				}
-				for k in measurement.measurementValueParams.keys()  {
-					value.properties["value_"+k] := measurement.measurementValueParams[k];
-				}
-				value.properties["timestamp"] := measurement.time;
-				
-				value.properties.add("unit",measurement.unit);
-				TimerParams tp := TimerParams.absolute(timerDelay).withPayload(value);
-				if(isGroup) {
-					tp := tp.withPartition(measurement.source);
-				}
-				else if(isBroadcastDevice) {
-					tp := tp.withPartition(Partition_Broadcast(measurement.source));
-				}
-				any discard := $base.createTimerWith(tp);
-			} catch (Exception e) {
-				log $base.getModelTime().toString()+": Dropping event:"+measurement.toString()+", exception:"+e.toString() at DEBUG;
-				$base.droppedEvent(measurement, measurement.time);
-			}
+			optional<float> timeValue := new optional<float>;
+			if not ignoreTimestamp {
+				timeValue := measurement.time;
+			}			
+			any discard := inputHandler.schedule(measurement, timeValue);
 		}
 	}
 	
@@ -214,10 +167,47 @@ event DeviceMeasurementInput{
 	 * @param $activation The current activation.
 	 * @param value value to be put on the wire.
 	 */
-	action $timerTriggered(Activation $activation, any $payload) {
-		$setOutput_measurementValue($activation, <Value>$payload);
+	action $timerTriggered(Activation $activation, any $payload) {		
+		MeasurementFragment measurement := <MeasurementFragment>$payload;
+		Value value := new Value;
+		value.value := measurement.value;
+		value.timestamp := $activation.timestamp;
+		value.properties["value"] := measurement.value;
+		if measurement.measurementId != "" {
+			value.properties["id"] := measurement.measurementId;
+		}
+
+		if measurement.type != "" {
+			value.properties["type"] := measurement.type ;
+		}
+
+		if measurement.time != 0.0 {
+			value.properties["time"] := measurement.time ;
+		}
+
+		if measurement.source != "" {
+			value.properties["source"] :=  measurement.source ;
+		}
+		if measurement.fragment != "" {
+			value.properties["fragment"] := measurement.fragment ;
+		}
+		if measurement.series != "" {
+			value.properties["series"] := measurement.series ;
+		}
+
+		string k;
+		for k in measurement.params.keys()  {
+			value.properties["measurement_"+k] := measurement.params[k]; 
+		}
+
+		for k in measurement.measurementValueParams.keys()  {
+			value.properties["value_"+k] := measurement.measurementValueParams[k];
+		}
+
+		value.properties.add("unit",measurement.unit);
+		$setOutput_measurementValue($activation, value);
 	}
-	
+			
 	/**
 	 * Value.
 	 *
