@@ -1,0 +1,148 @@
+/*
+ * $Copyright (c) 2020-2023 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
+ * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Software AG
+ */
+
+package apamax.analyticsbuilder.blocks;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+using apama.analyticsbuilder.Value;
+using apama.analyticsbuilder.TimerParams;
+using com.apama.exceptions.Exception;
+using apama.analyticsbuilder.L10N;
+using apama.analyticsbuilder.Promise;
+
+
+event TimeSeriesDownsample_$State {
+	float first;
+	float last;
+	float min;
+	float max;
+
+	float timestamp_first;
+	float timestamp_last;
+	float timestamp_min;
+	float timestamp_max;
+
+
+	action reset() {
+		first := 0.0;
+		last := 0.0;
+		min := float.INFINITY;
+		max := -float.INFINITY;
+		timestamp_first := float.INFINITY;
+		timestamp_last := float.INFINITY;
+		timestamp_min := float.INFINITY;
+		timestamp_max := float.INFINITY;
+	}
+	
+	action update(float value, float activation_timestamp) {
+		if(activation_timestamp < timestamp_first) {
+			first := value;
+			timestamp_first := activation_timestamp;
+		}
+
+		last := value;
+		timestamp_last := activation_timestamp;
+
+		if(value < min) {
+			min := value;
+			timestamp_min := activation_timestamp;
+		}
+
+		if(value > max) {
+			max := value;
+			timestamp_max := activation_timestamp;
+		}
+	}
+}
+/**
+ * Time Series Downsample
+ *
+ * Downsamples discrete measurements.
+ *
+ * @$blockCategory Aggregates
+ */
+event TimeSeriesDownsample {
+
+	BlockBase $base;
+
+
+	
+	/**
+	 * Performs downsampling.
+	 * @param $activation The current activation.
+	 * @param $input_value The input value.
+	 * @param $input_sample A new sample is provided.
+	 */
+	action $process(Activation $activation, float $input_value, boolean $input_sample, TimeSeriesDownsample_$State $blockState) {
+		$blockState.update($input_value, $activation.timestamp);
+
+		if $base.getInputCount("sample") = 0 or $input_sample {
+			$setOutput_first($activation, $blockState.first);
+			$setOutput_last($activation, $blockState.last);
+			$setOutput_min($activation, $blockState.min);
+			$setOutput_max($activation, $blockState.max);
+
+			$setOutput_first_timestamp($activation, $blockState.first_timestamp);
+			$setOutput_last_timestamp($activation, $blockState.last_timestamp);
+			$setOutput_min_timestamp($activation, $blockState.min_timestamp);
+			$setOutput_max_timestamp($activation, $blockState.max_timestamp);
+		}
+	}
+
+	/**
+	 * First
+	 *
+	 * First of the received input values.
+	 */
+	action<Activation,float> $setOutput_first;
+	/**
+	 * First TS
+	 *
+	 * Timestamp of first
+	 */
+	action<Activation,float> $setOutput_timestamp_first;
+	/**
+	 * Last
+	 *
+	 * Last of the received input values.
+	 */
+	action<Activation,float> $setOutput_last;
+	/**
+	 * Last TS
+	 *
+	 * Timestamp of last
+	 */
+	action<Activation,float> $setOutput_timestamp_last;
+	/**
+	 * Minimum
+	 *
+	 * Minimum of the received input values.
+	 */
+	action<Activation,float> $setOutput_min;
+	/**
+	 * Min TS
+	 *
+	 * Timestamp of min
+	 */
+	action<Activation,float> $setOutput_timestamp_min;
+	/**
+	 * Maximum
+	 *
+	 * Maximum of the received input values.
+	 */
+	action<Activation,float> $setOutput_max;
+	/**
+	 * Max TS
+	 *
+	 * Timestamp of max
+	 */
+	action<Activation,float> $setOutput_timestamp_max;
+
+
+	/**Defines type for input sample.*/
+	constant string $INPUT_TYPE_sample := "pulse";
+
+}
