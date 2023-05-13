@@ -1,0 +1,137 @@
+/*
+ * $Copyright (c) 2018-2023 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
+ * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Software AG
+ */
+package apamax.analyticskit.blocks.cumulocity;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+using apama.analyticsbuilder.Partition_Broadcast;
+using apama.analyticsbuilder.Value;
+
+using com.apama.cumulocity.Measurement;
+using com.apama.cumulocity.MeasurementValue;
+using com.apama.exceptions.Exception;
+using apama.analyticsbuilder.cumulocity.CumulocityOutputParams;
+using apama.analyticsbuilder.cumulocity.CumulocityOutputHandler;
+using apama.analyticsbuilder.Promise;
+
+event CreateMultiMeasurement_$Parameters {
+	/**
+	 * Device or Trigger Device.
+	 *
+	 * The device (or for models handling groups, Trigger Device) to which the measurement is to be sent.
+	 *
+	 * The model editor uses the current device name. This is mapped internally to the device identifier.
+	 * @$semanticType c8y_deviceIdOrCurrentDevice
+	 */
+	any deviceId;
+
+	/**
+	 * Fragment Name.
+	 *
+	 * The name of the fragment in the measurement.
+	 */
+	string fragment;
+
+	/**
+	 * Series Name.
+	 *
+	 * The name of the series in the measurement.
+	 */
+	string series;
+
+	/**
+	 * Unit.
+	 *
+	 * The name of the unit of measurement (for example, "mm" or "lux").
+	 */
+	optional<string> unit;
+
+	/** Validate parameters */
+	action $validate() {
+		switch(deviceId) {
+			case string: { BlockBase.throwsOnEmpty(deviceId, "deviceId", self); }
+			default: {
+				if deviceId = any() or deviceId.getEntry("currentDevice") != <any> true {
+					throw Exception("Expected a device Id or a currentDevice object", "IllegalArgumentException"); // NON-L10N-DEV
+				}
+			}
+		}
+		BlockBase.throwsOnEmpty(fragment, "fragment", self);
+		BlockBase.throwsOnEmpty(series, "series", self);
+	}
+}
+
+/**
+ * Multi Measurement Output.
+ *
+ * Creates multiple <tt>Measurement</tt> objects for the associated device or the triggering device.
+ *
+ * This block uses the properties of the Send input. It expects that a "measurements" property exists 
+ * which points to a <tt>dictionary<float,float></tt> where the keys are the timestamps and the values 
+ * are the measurement values. 
+ * The measurement is sent to the current device or the device specified.
+ *
+ * Non-finite values are ignored.
+ *
+ * @$blockCategory Output
+ * @$producesOutput
+ * @$blockType c8y_Output
+ * @$derivedName $fragment Multi Measurement
+ * @$titleIsDerived true
+ */
+event CreateMultiMeasurement {
+	BlockBase $base;
+	CreateMultiMeasurement_$Parameters $parameters;
+	/** Sends to the 'current' device from the activation's partition: */
+	CumulocityOutputHandler outputHandler;
+	
+	
+	action $validate() returns Promise {
+		dictionary<string, any> fields := {"fragment":<any>$parameters.fragment, "series":$parameters.series};
+	    // Creating an CumulocityOutputParams object
+	    CumulocityOutputParams params := CumulocityOutputParams.forSyncEventType($parameters.deviceId, 
+	                                            self, Measurement.getName(), fields);
+	    // Declare the output stream and provide callback action to save the output handler object.
+	    // Return the Promise returned from the declare call.
+	    return params.declare(handlerCreated);
+	}
+	/** Callback action to receive and save CumulocityOutputHandler object.
+	 * @param cumulocityOutputHandler the handler object
+	 */
+	action handlerCreated(CumulocityOutputHandler cumulocityOutputHandler) {
+	    outputHandler := cumulocityOutputHandler;
+	}
+
+	
+	/**
+	 * Process an activation.
+	 * @param $input_send Signals that a new measurement is to be created. 
+	 * @$inputName send Send
+	 */
+	action $process(Activation $activation, dictionary<string,any>$modelScopeParameters, Value $input_send) {
+		dictionary<float,float> ts := < dictionary<float,float> > $input_send.properties["measurements"];
+
+		ifpresent outputHandler.deviceToOutput($activation) as device {
+			float time;
+			for time in ts.keys() {
+				if(ts[time].isFinite()) {
+					Measurement m := new Measurement;
+					m.type := $parameters.fragment; // while type is required, it's mostly ignored, and typically the fragment name.
+					m.source := device;
+					
+					MeasurementValue mv := new MeasurementValue;
+					mv.value := ts[time];
+					ifpresent $parameters.unit as unit { mv.unit := unit; }
+					m.measurements := {$parameters.fragment:{$parameters.series:mv}};
+					m.time := time;
+					outputHandler.sendOutput(m,Measurement.SEND_CHANNEL,$activation);
+				}
+			}
+		}
+	}
+	
+	constant string $INPUT_TYPE_send := "pulse";
+
+}
