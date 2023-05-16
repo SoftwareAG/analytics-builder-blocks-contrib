@@ -69,7 +69,6 @@ event TimeSeriesDownsample {
 	BlockBase $base;
 
 
-	
 	/**
 	 * Performs downsampling.
 	 * @param $activation The current activation.
@@ -77,70 +76,29 @@ event TimeSeriesDownsample {
 	 * @param $input_sample A new sample is provided.
 	 */
 	action $process(Activation $activation, float $input_value, boolean $input_sample, TimeSeriesDownsample_$State $blockState) {
-		$blockState.update($input_value, $activation.timestamp);
-
 		if $base.getInputCount("sample") = 0 or $input_sample {
-			$setOutput_first($activation, $blockState.first);
-			$setOutput_last($activation, $blockState.last);
-			$setOutput_min($activation, $blockState.min);
-			$setOutput_max($activation, $blockState.max);
-
-			$setOutput_first_timestamp($activation, $blockState.first_timestamp);
-			$setOutput_last_timestamp($activation, $blockState.last_timestamp);
-			$setOutput_min_timestamp($activation, $blockState.min_timestamp);
-			$setOutput_max_timestamp($activation, $blockState.max_timestamp);
+			Value v :=new Value;
+			dictionary<float,float> ts := new dictionary<float,float>;
+			ts[$blockState.timestamp_first] := $blockState.first;
+			ts[$blockState.timestamp_last] := $blockState.last;
+			ts[$blockState.timestamp_min] := $blockState.min;
+			ts[$blockState.timestamp_max] := $blockState.max;
+			v.properties["measurements"] := ts;
+			$setOutput_downSampledMeasurements($activation, v);
+			$blockState.reset();
+		} else {
+			$blockState.update($input_value, $activation.timestamp);
 		}
 	}
 
 	/**
-	 * First
+	 * Downsampled Measurements
 	 *
-	 * First of the received input values.
+	 * Value containing a property <tt>measurements</tt> which is the measurements of the sampled period.
 	 */
-	action<Activation,float> $setOutput_first;
-	/**
-	 * First TS
-	 *
-	 * Timestamp of first
-	 */
-	action<Activation,float> $setOutput_timestamp_first;
-	/**
-	 * Last
-	 *
-	 * Last of the received input values.
-	 */
-	action<Activation,float> $setOutput_last;
-	/**
-	 * Last TS
-	 *
-	 * Timestamp of last
-	 */
-	action<Activation,float> $setOutput_timestamp_last;
-	/**
-	 * Minimum
-	 *
-	 * Minimum of the received input values.
-	 */
-	action<Activation,float> $setOutput_min;
-	/**
-	 * Min TS
-	 *
-	 * Timestamp of min
-	 */
-	action<Activation,float> $setOutput_timestamp_min;
-	/**
-	 * Maximum
-	 *
-	 * Maximum of the received input values.
-	 */
-	action<Activation,float> $setOutput_max;
-	/**
-	 * Max TS
-	 *
-	 * Timestamp of max
-	 */
-	action<Activation,float> $setOutput_timestamp_max;
+	action<Activation,Value> $setOutput_downSampledMeasurements;	
 
+	constant string $OUTPUT_TYPE_downSampledMeasurements := "pulse";
 
 	/**Defines type for input sample.*/
 	constant string $INPUT_TYPE_sample := "pulse";
