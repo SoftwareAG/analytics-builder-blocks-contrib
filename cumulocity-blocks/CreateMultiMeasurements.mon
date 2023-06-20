@@ -116,7 +116,7 @@ event CreateMultiMeasurement {
 		ifpresent outputHandler.deviceToOutput($activation) as device {
 			float time;
 			for time in ts.keys() {
-				if(time > 0 and ts[time].isFinite()) {
+				if(time > 0.0 and ts[time].isFinite()) {
 					Measurement m := new Measurement;
 					m.type := $parameters.fragment; // while type is required, it's mostly ignored, and typically the fragment name.
 					m.source := device;
