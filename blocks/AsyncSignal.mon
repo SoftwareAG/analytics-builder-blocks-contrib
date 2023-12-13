@@ -1,0 +1,151 @@
+/*
+ * $Copyright (c) 2018-2023 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
+ * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Software AG
+ */
+
+package apamax.analyticsbuilder.blocks;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+using apama.analyticsbuilder.Value;
+using apama.analyticsbuilder.TimerParams;
+using apama.analyticsbuilder.L10N;
+using apama.analyticsbuilder.ABConstants;
+using apama.analyticsbuilder.cumulocity.MeasurementFragment;
+using com.apama.cumulocity.Measurement;
+using com.apama.exceptions.Exception;
+
+using apama.analyticsbuilder.Promise;
+using apama.analyticsbuilder.cumulocity.CumulocityInputHandler;
+using apama.analyticsbuilder.cumulocity.CumulocityInputParams;
+using apama.analyticsbuilder.Partition_Broadcast;
+
+event AsyncSignal {
+    string signalType;
+    dictionary<string, any> params; 
+    constant string CHANNEL := "Signal";
+}
+
+/**
+ * Parameters
+ * The parameters for the Async Send Signal block.
+ */
+event SendAsyncSignal_$Parameters{
+
+	/**
+	 * Signal Type.
+	 *
+	 * The type of signal to send. Receiving side must match.
+	 */
+	string signalType;
+	
+}
+
+
+/**
+ * Parameters
+ * The parameters for the Async Receive Signal block.
+ */
+event ReceiveAsyncSignal_$Parameters{
+
+	/**
+	 * Signal Type.
+	 *
+	 * The type of signal to receive. Sending side must match.
+	 */
+	string signalType;
+	
+}
+
+/**
+ * Send Async Signal
+ *
+ * Send an event directly to another block in the same or another model.
+ *
+ * Care must be taken to avoid infinite loops-
+ *
+ * @$blockCategory Utilities
+ * @$derivedName Send $signalType
+ */
+event SendAsyncSignal {
+
+	BlockBase $base;
+
+	/**The parameters for the block. */
+	SendAsyncSignal_$Parameters $parameters;
+		
+	/**
+	 * Sets output on the current activation.
+	 * @param $activation The current activation.
+     * @param $input_send Sends the signal 
+     * @param $input_params The properties to set on the signal.     
+	 */
+	action $process(Activation $activation, boolean $input_send, optional<Value> $input_params) {
+        if $input_send {
+        	
+			dictionary<string, any> params := {};
+			ifpresent $input_params as value {
+				params := value.properties;
+			}
+        	
+            send AsyncSignal($parameters.signalType, params) to AsyncSignal.CHANNEL;
+        }
+	}
+
+    constant string $INPUT_TYPE_send := "pulse";
+}
+
+/**
+ * Receive Async Signal
+ *
+ * Receive an event directly to another block in the same or another model.
+ *
+ * Care must be taken to avoid infinite loops-
+ *
+ * @$blockCategory Utilities
+ * @$derivedName Receive $signalType
+ */
+event ReceiveAsyncSignal {
+
+	BlockBase $base;
+
+	/**The parameters for the block. */
+	ReceiveAsyncSignal_$Parameters $parameters;
+		
+
+    /**
+	 * Method starts listening for the signals
+	 */
+	action $init() {
+        monitor.subscribe(AsyncSignal.CHANNEL);
+        on all AsyncSignal(signalType=$parameters.signalType) as signal {
+        	 any discard := $base.createTimerWith(TimerParams.relative(0.1).withPayload(signal));
+        }
+    }
+    
+    /**
+	 * Sets output on the current activation.
+	 * @param $activation The current activation.
+	 * @param value value to be put on the wire.
+	 */
+	action $timerTriggered(Activation $activation, any $payload) {	
+        AsyncSignal signal := <AsyncSignal>$payload;
+        Value value := new Value;
+		value.value := true;
+		value.properties := signal.params;
+        value.timestamp := $activation.timestamp;
+		$setOutput_value($activation, value);
+    }
+
+    /**
+	 * Signals
+	 *
+	 * Generates a pulse output for each <tt>Signal</tt> object received, with extra properties.
+	 */
+	action<Activation,Value> $setOutput_value;
+
+	/**
+	 * Constant specifies the output type the block.
+	 */
+	constant string $OUTPUT_TYPE_value := "pulse"; 
+}
