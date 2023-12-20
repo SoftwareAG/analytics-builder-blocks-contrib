@@ -24,6 +24,8 @@
 	<property name="shutdownApamaComponentsAfterTest" value="true"/>
 
 
+	<test-plugin classname="apama.testplugin.ApamaPlugin" alias="apama"/>	
+
 
 	<runner classname="ApamaRunner" module="apama.runner"/>
 

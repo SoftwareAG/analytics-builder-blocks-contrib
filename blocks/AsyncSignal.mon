@@ -11,8 +11,6 @@ using apama.analyticsbuilder.Value;
 using apama.analyticsbuilder.TimerParams;
 using apama.analyticsbuilder.L10N;
 using apama.analyticsbuilder.ABConstants;
-using apama.analyticsbuilder.cumulocity.MeasurementFragment;
-using com.apama.cumulocity.Measurement;
 using com.apama.exceptions.Exception;
 
 using apama.analyticsbuilder.Promise;
@@ -23,7 +21,7 @@ using apama.analyticsbuilder.Partition_Broadcast;
 event AsyncSignal {
     string signalType;
     dictionary<string, any> params; 
-    constant string CHANNEL := "Signal";
+    constant string CHANNEL := "apamax.analyticsbuilder.blocks.AsyncSignal";
 }
 
 /**
@@ -60,7 +58,7 @@ event ReceiveAsyncSignal_$Parameters{
 /**
  * Send Async Signal
  *
- * Send an event directly to another block in the same or another model.
+ * Send an event directly to a <tt>Receive Async Signal</tt> block in the same or another model.
  *
  * Care must be taken to avoid infinite loops-
  *
@@ -98,7 +96,7 @@ event SendAsyncSignal {
 /**
  * Receive Async Signal
  *
- * Receive an event directly to another block in the same or another model.
+ * Receive an event directly from a <tt>Send Async Signal</tt> block in the same or another model.
  *
  * Care must be taken to avoid infinite loops-
  *
@@ -118,7 +116,9 @@ event ReceiveAsyncSignal {
 	 */
 	action $init() {
         monitor.subscribe(AsyncSignal.CHANNEL);
+		log "Configuring listener for " + $parameters.signalType at INFO;
         on all AsyncSignal(signalType=$parameters.signalType) as signal {
+			log "Received signal " + signal.toString();
         	 any discard := $base.createTimerWith(TimerParams.relative(0.1).withPayload(signal));
         }
     }
@@ -129,6 +129,7 @@ event ReceiveAsyncSignal {
 	 * @param value value to be put on the wire.
 	 */
 	action $timerTriggered(Activation $activation, any $payload) {	
+		log "Timer triggered for " + $payload.toString();
         AsyncSignal signal := <AsyncSignal>$payload;
         Value value := new Value;
 		value.value := true;
