@@ -18,6 +18,7 @@ using apama.analyticsbuilder.cumulocity.CumulocityInputHandler;
 using apama.analyticsbuilder.cumulocity.CumulocityInputParams;
 using apama.analyticsbuilder.Partition_Broadcast;
 
+
 event AsyncSignal {
     string signalType;
 	string modelId;
@@ -166,8 +167,9 @@ event ReceiveAsyncSignal {
 		if($parameters.scopeToModel) {
 			filter := $base.modelId;
 		}
+
 		on all AsyncSignal(signalType=$parameters.signalType,modelId=filter) as signal {
-			any discard := $base.createTimerWith(TimerParams.relative(0.1).withPayload(signal));
+			any discard := $base.createTimerWith(TimerParams.relative((0.1)).withPartition(new Partition_Broadcast).withPayload(signal));
         }
     }
     
