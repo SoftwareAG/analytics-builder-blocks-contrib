@@ -20,6 +20,7 @@ using apama.analyticsbuilder.Partition_Broadcast;
 
 event AsyncSignal {
     string signalType;
+	string modelId;
     dictionary<string, any> params; 
     constant string CHANNEL := "apamax.analyticsbuilder.blocks.AsyncSignal";
 }
@@ -37,6 +38,14 @@ event SendAsyncSignal_$Parameters{
 	 */
 	string signalType;
 	
+	/**
+	 * Scope to Model.
+	 *
+	 * If enabled restricts signals to the current model. 
+	 */
+	boolean scopeToModel;
+
+	constant boolean $DEFAULT_scopeToModel := false;
 }
 
 
@@ -53,6 +62,14 @@ event ReceiveAsyncSignal_$Parameters{
 	 */
 	string signalType;
 	
+	/**
+	 * Scope to Model.
+	 *
+	 * If enabled restricts signals to the current model. 
+	 */
+	boolean scopeToModel;
+
+	constant boolean $DEFAULT_scopeToModel := false;
 }
 
 /**
@@ -86,7 +103,11 @@ event SendAsyncSignal {
 				params := value.properties;
 			}
         	
-            send AsyncSignal($parameters.signalType, params) to AsyncSignal.CHANNEL;
+			string modelId := "";
+			if($parameters.scopeToModel) {
+				modelId := $base.getModelId();
+			}
+            send AsyncSignal($parameters.signalType, modelId, params) to AsyncSignal.CHANNEL;
         }
 	}
 
@@ -116,10 +137,12 @@ event ReceiveAsyncSignal {
 	 */
 	action $init() {
         monitor.subscribe(AsyncSignal.CHANNEL);
-		log "Configuring listener for " + $parameters.signalType at INFO;
-        on all AsyncSignal(signalType=$parameters.signalType) as signal {
-			log "Received signal " + signal.toString();
-        	 any discard := $base.createTimerWith(TimerParams.relative(0.1).withPayload(signal));
+		string filter := "";
+		if($parameters.scopeToModel) {
+			filter := $base.modelId;
+		}
+        on all AsyncSignal(signalType=$parameters.signalType,modelId=filter) as signal {
+			any discard := $base.createTimerWith(TimerParams.relative(0.1).withPayload(signal));
         }
     }
     

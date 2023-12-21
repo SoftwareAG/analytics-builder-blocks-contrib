@@ -23,9 +23,9 @@ class PySysTest(AnalyticsBuilderBaseTest):
 		
 		self.sendEventStrings(correlator,
 		                      self.timestamp(1),
-							  'apamax.analyticsbuilder.blocks.AsyncSignal("Reset",{})',
+							  'apamax.analyticsbuilder.blocks.AsyncSignal("Reset","",{})',
 							  self.timestamp(2),
-							  'apamax.analyticsbuilder.blocks.AsyncSignal("Reset",{"a":any(float,100)})',
+							  'apamax.analyticsbuilder.blocks.AsyncSignal("Reset","",{"a":any(float,100)})',
 							  self.timestamp(3),
 							  channel='apamax.analyticsbuilder.blocks.AsyncSignal')
 
