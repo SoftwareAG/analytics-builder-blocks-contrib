@@ -21,6 +21,7 @@ using apama.analyticsbuilder.Partition_Broadcast;
 event AsyncSignal {
     string signalType;
 	string modelId;
+	any partition;
     dictionary<string, any> params; 
     constant string CHANNEL := "apamax.analyticsbuilder.blocks.AsyncSignal";
 }
@@ -46,6 +47,16 @@ event SendAsyncSignal_$Parameters{
 	boolean scopeToModel;
 
 	constant boolean $DEFAULT_scopeToModel := false;
+
+	/**
+	 * Scope to Partition.
+	 *
+	 * If enabled restricts signals to the current partition of the current model. 
+	 * Enabling scope to partition implies scope to model.
+	 */
+	boolean scopeToPartition;
+
+	constant boolean $DEFAULT_scopeToPartition := false;
 }
 
 
@@ -70,6 +81,16 @@ event ReceiveAsyncSignal_$Parameters{
 	boolean scopeToModel;
 
 	constant boolean $DEFAULT_scopeToModel := false;
+
+	/**
+	 * Scope to Partition.
+	 *
+	 * If enabled restricts signals to the current partition of the current model. 
+	 * Enabling scope to partition implies scope to model.
+	 */
+	boolean scopeToPartition;
+
+	constant boolean $DEFAULT_scopeToPartition := false;
 }
 
 /**
@@ -104,10 +125,14 @@ event SendAsyncSignal {
 			}
         	
 			string modelId := "";
-			if($parameters.scopeToModel) {
+			if($parameters.scopeToModel or $parameters.scopeToPartition) {
 				modelId := $base.getModelId();
 			}
-            send AsyncSignal($parameters.signalType, modelId, params) to AsyncSignal.CHANNEL;
+			any partition := new any;
+			if($parameters.scopeToPartition) {
+				partition := $activation.partition;
+			}
+            send AsyncSignal($parameters.signalType, modelId, partition, params) to AsyncSignal.CHANNEL;
         }
 	}
 
@@ -151,14 +176,15 @@ event ReceiveAsyncSignal {
 	 * @param $activation The current activation.
 	 * @param value value to be put on the wire.
 	 */
-	action $timerTriggered(Activation $activation, any $payload) {	
-		log "Timer triggered for " + $payload.toString();
+	action $timerTriggered(Activation $activation, any $payload) {
         AsyncSignal signal := <AsyncSignal>$payload;
-        Value value := new Value;
-		value.value := true;
-		value.properties := signal.params;
-        value.timestamp := $activation.timestamp;
-		$setOutput_value($activation, value);
+		if($parameters.scopeToPartition or ($activation.partition=signal.partition)) {
+			Value value := new Value;
+			value.value := true;
+			value.properties := signal.params;
+			value.timestamp := $activation.timestamp;
+			$setOutput_value($activation, value);
+		}
     }
 
     /**
