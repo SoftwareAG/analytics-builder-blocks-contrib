@@ -166,7 +166,7 @@ event ReceiveAsyncSignal {
 		if($parameters.scopeToModel) {
 			filter := $base.modelId;
 		}
-        on all AsyncSignal(signalType=$parameters.signalType,modelId=filter) as signal {
+		on all AsyncSignal(signalType=$parameters.signalType,modelId=filter) as signal {
 			any discard := $base.createTimerWith(TimerParams.relative(0.1).withPayload(signal));
         }
     }
@@ -178,7 +178,7 @@ event ReceiveAsyncSignal {
 	 */
 	action $timerTriggered(Activation $activation, any $payload) {
         AsyncSignal signal := <AsyncSignal>$payload;
-		if($parameters.scopeToPartition or ($activation.partition=signal.partition)) {
+		if(not $parameters.scopeToPartition or ($activation.partition=signal.partition)) {
 			Value value := new Value;
 			value.value := true;
 			value.properties := signal.params;
