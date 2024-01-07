@@ -1,0 +1,222 @@
+/*
+ * $Copyright (c) 2018-2023 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
+ * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Software AG
+ */
+
+package apamax.analyticsbuilder.blocks;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+using apama.analyticsbuilder.Value;
+using apama.analyticsbuilder.TimerParams;
+using apama.analyticsbuilder.L10N;
+using apama.analyticsbuilder.ABConstants;
+using com.apama.exceptions.Exception;
+
+using apama.analyticsbuilder.Promise;
+using apama.analyticsbuilder.cumulocity.CumulocityInputHandler;
+using apama.analyticsbuilder.cumulocity.CumulocityInputParams;
+using apama.analyticsbuilder.Partition_Broadcast;
+
+
+event AsyncSignal {
+    string signalType;
+	string modelId;
+	any partition;
+    dictionary<string, any> params; 
+    constant string CHANNEL := "apamax.analyticsbuilder.blocks.AsyncSignal";
+}
+
+/**
+ * Parameters
+ * The parameters for the Async Send Signal block.
+ */
+event SendAsyncSignal_$Parameters{
+
+	/**
+	 * Signal Type.
+	 *
+	 * The type of signal to send. Receiving side must match.
+	 * The type is stored in string field so arbitrary names are allowed.
+	 */
+	string signalType;
+	
+	/**
+	 * Scope to Model.
+	 *
+	 * If enabled restricts signals to the current model meaning the 
+	 * receiver block must be in the same model.
+	 */
+	boolean scopeToModel;
+
+	constant boolean $DEFAULT_scopeToModel := true;
+
+	/**
+	 * Scope to Partition.
+	 *
+	 * If enabled restricts signals to the current partition of the current model. 
+	 * Enabling scope to partition implies scope to model. Partitions are primarily 
+	 * used for group models. Enabling scope to partition means that the signal is 
+	 * only received by the same device. 
+	 */
+	boolean scopeToPartition;
+
+	constant boolean $DEFAULT_scopeToPartition := true;
+}
+
+
+/**
+ * Parameters
+ * The parameters for the Async Receive Signal block.
+ */
+event ReceiveAsyncSignal_$Parameters{
+
+	/**
+	 * Signal Type.
+	 *
+	 * The type of signal to receive. Sending side must match.
+	 * The type is stored in string field so arbitrary names are allowed.	 
+	 */
+	string signalType;
+	
+	/**
+	 * Scope to Model.
+	 *
+	 * If enabled restricts signals to the current model meaning that 
+	 * the sending block for this receiver must be located in the same model.
+	 */
+	boolean scopeToModel;
+
+	constant boolean $DEFAULT_scopeToModel := true;
+
+	/**
+	 * Scope to Partition.
+	 *
+	 * If enabled restricts signals to the current partition of the current model. 
+	 * Enabling scope to partition implies scope to model. Partitions are primarily 
+	 * used for group models. Enabling scope to partition means that the signal must 
+	 * originate from the same device which partition.
+	 */
+	boolean scopeToPartition;
+
+	constant boolean $DEFAULT_scopeToPartition := true;
+}
+
+/**
+ * Send Async Signal
+ *
+ * Send an event directly to a <tt>Receive Async Signal</tt> block in the
+ *  same or another model.
+ *
+ * The signaling is implemented by sending and receiving an Apama event. 
+ * As a result it is detached from normal model execution and no loop 
+ * detection takes place. 
+ * 
+ * Care must be taken to avoid infinite loops.
+ *
+ * @$blockCategory Utilities
+ * @$derivedName Send $signalType
+ */
+event SendAsyncSignal {
+
+	BlockBase $base;
+
+	/**The parameters for the block. */
+	SendAsyncSignal_$Parameters $parameters;
+		
+	/**
+	 * Sets output on the current activation.
+	 * @param $activation The current activation.
+     * @param $input_send Sends the signal 
+     * @param $input_params The properties to set on the signal. 
+	 * @$inputName send Send
+	 * @$inputName params Properties    
+	 */
+	action $process(Activation $activation, boolean $input_send, optional<Value> $input_params) {
+        if $input_send {
+        	
+			dictionary<string, any> params := {};
+			ifpresent $input_params as value {
+				params := value.properties;
+			}
+        	
+			string modelId := "";
+			if($parameters.scopeToModel or $parameters.scopeToPartition) {
+				modelId := $base.getModelId();
+			}
+			any partition := new any;
+			if($parameters.scopeToPartition) {
+				partition := $activation.partition;
+			}
+            send AsyncSignal($parameters.signalType, modelId, partition, params) to AsyncSignal.CHANNEL;
+        }
+	}
+
+    constant string $INPUT_TYPE_send := "pulse";
+}
+
+/**
+ * Receive Async Signal
+ *
+ * Receive an event directly from a <tt>Send Async Signal</tt> block in the same or another model.
+ *
+ * The signaling is implemented by sending and receiving an Apama event. 
+ * As a result it is detached from normal model execution and no loop 
+ * detection takes place. 
+ * 
+ * Care must be taken to avoid infinite loops.
+ *
+ * @$blockCategory Utilities
+ * @$derivedName Receive $signalType
+ */
+event ReceiveAsyncSignal {
+
+	BlockBase $base;
+
+	/**The parameters for the block. */
+	ReceiveAsyncSignal_$Parameters $parameters;
+		
+
+    /**
+	 * Method starts listening for the signals
+	 */
+	action $init() {
+        monitor.subscribe(AsyncSignal.CHANNEL);
+		string filter := "";
+		if($parameters.scopeToModel) {
+			filter := $base.modelId;
+		}
+
+		on all AsyncSignal(signalType=$parameters.signalType,modelId=filter) as signal {
+			any discard := $base.createTimerWith(TimerParams.relative((0.1)).withPartition(new Partition_Broadcast).withPayload(signal));
+        }
+    }
+    
+    /**
+	 * Sets output on the current activation.
+	 * @param $activation The current activation.
+	 * @param value value to be put on the wire.
+	 */
+	action $timerTriggered(Activation $activation, any $payload) {
+        AsyncSignal signal := <AsyncSignal>$payload;
+		if(not $parameters.scopeToPartition or ($activation.partition=signal.partition)) {
+			Value value := new Value;
+			value.value := true;
+			value.properties := signal.params;
+			value.timestamp := $activation.timestamp;
+			$setOutput_value($activation, value);
+		}
+    }
+
+    /**
+	 * Signals
+	 *
+	 * Generates a pulse output for each <tt>Signal</tt> object received, with extra properties.
+	 */
+	action<Activation,Value> $setOutput_value;
+
+	/**
+	 * Constant specifies the output type the block.
+	 */
+	constant string $OUTPUT_TYPE_value := "pulse"; 
+}
