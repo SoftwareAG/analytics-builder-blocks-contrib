@@ -37,13 +37,15 @@ event SendAsyncSignal_$Parameters{
 	 * Signal Type.
 	 *
 	 * The type of signal to send. Receiving side must match.
+	 * The type is stored in string field so arbitrary names are allowed.
 	 */
 	string signalType;
 	
 	/**
 	 * Scope to Model.
 	 *
-	 * If enabled restricts signals to the current model. 
+	 * If enabled restricts signals to the current model meaning the 
+	 * receiver block must be in the same model.
 	 */
 	boolean scopeToModel;
 
@@ -53,7 +55,9 @@ event SendAsyncSignal_$Parameters{
 	 * Scope to Partition.
 	 *
 	 * If enabled restricts signals to the current partition of the current model. 
-	 * Enabling scope to partition implies scope to model.
+	 * Enabling scope to partition implies scope to model. Partitions are primarily 
+	 * used for group models. Enabling scope to partition means that the signal is 
+	 * only received by the same device. 
 	 */
 	boolean scopeToPartition;
 
@@ -71,13 +75,15 @@ event ReceiveAsyncSignal_$Parameters{
 	 * Signal Type.
 	 *
 	 * The type of signal to receive. Sending side must match.
+	 * The type is stored in string field so arbitrary names are allowed.	 
 	 */
 	string signalType;
 	
 	/**
 	 * Scope to Model.
 	 *
-	 * If enabled restricts signals to the current model. 
+	 * If enabled restricts signals to the current model meaning that 
+	 * the sending block for this receiver must be located in the same model.
 	 */
 	boolean scopeToModel;
 
@@ -87,7 +93,9 @@ event ReceiveAsyncSignal_$Parameters{
 	 * Scope to Partition.
 	 *
 	 * If enabled restricts signals to the current partition of the current model. 
-	 * Enabling scope to partition implies scope to model.
+	 * Enabling scope to partition implies scope to model. Partitions are primarily 
+	 * used for group models. Enabling scope to partition means that the signal must 
+	 * originate from the same device which partition.
 	 */
 	boolean scopeToPartition;
 
@@ -97,9 +105,14 @@ event ReceiveAsyncSignal_$Parameters{
 /**
  * Send Async Signal
  *
- * Send an event directly to a <tt>Receive Async Signal</tt> block in the same or another model.
+ * Send an event directly to a <tt>Receive Async Signal</tt> block in the
+ *  same or another model.
  *
- * Care must be taken to avoid infinite loops-
+ * The signaling is implemented by sending and receiving an Apama event. 
+ * As a result it is detached from normal model execution and no loop 
+ * detection takes place. 
+ * 
+ * Care must be taken to avoid infinite loops.
  *
  * @$blockCategory Utilities
  * @$derivedName Send $signalType
@@ -115,7 +128,9 @@ event SendAsyncSignal {
 	 * Sets output on the current activation.
 	 * @param $activation The current activation.
      * @param $input_send Sends the signal 
-     * @param $input_params The properties to set on the signal.     
+     * @param $input_params The properties to set on the signal. 
+	 * @$inputName send Send
+	 * @$inputName params Properties    
 	 */
 	action $process(Activation $activation, boolean $input_send, optional<Value> $input_params) {
         if $input_send {
@@ -145,7 +160,11 @@ event SendAsyncSignal {
  *
  * Receive an event directly from a <tt>Send Async Signal</tt> block in the same or another model.
  *
- * Care must be taken to avoid infinite loops-
+ * The signaling is implemented by sending and receiving an Apama event. 
+ * As a result it is detached from normal model execution and no loop 
+ * detection takes place. 
+ * 
+ * Care must be taken to avoid infinite loops.
  *
  * @$blockCategory Utilities
  * @$derivedName Receive $signalType
