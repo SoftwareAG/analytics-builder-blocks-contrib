@@ -47,7 +47,7 @@ event SendAsyncSignal_$Parameters{
 	 */
 	boolean scopeToModel;
 
-	constant boolean $DEFAULT_scopeToModel := false;
+	constant boolean $DEFAULT_scopeToModel := true;
 
 	/**
 	 * Scope to Partition.
@@ -57,7 +57,7 @@ event SendAsyncSignal_$Parameters{
 	 */
 	boolean scopeToPartition;
 
-	constant boolean $DEFAULT_scopeToPartition := false;
+	constant boolean $DEFAULT_scopeToPartition := true;
 }
 
 
@@ -81,7 +81,7 @@ event ReceiveAsyncSignal_$Parameters{
 	 */
 	boolean scopeToModel;
 
-	constant boolean $DEFAULT_scopeToModel := false;
+	constant boolean $DEFAULT_scopeToModel := true;
 
 	/**
 	 * Scope to Partition.
@@ -91,7 +91,7 @@ event ReceiveAsyncSignal_$Parameters{
 	 */
 	boolean scopeToPartition;
 
-	constant boolean $DEFAULT_scopeToPartition := false;
+	constant boolean $DEFAULT_scopeToPartition := true;
 }
 
 /**

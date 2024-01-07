@@ -19,7 +19,7 @@ class PySysTest(AnalyticsBuilderBaseTest):
 		correlator.receive('all.evt')
 		
 		# Deploying a new model with correct parameter.
-		self.modelId = self.createTestModel('apamax.analyticsbuilder.blocks.SendAsyncSignal',{'signalType':'Reset'})
+		self.modelId = self.createTestModel('apamax.analyticsbuilder.blocks.SendAsyncSignal',{'signalType':'Reset', 'scopeToModel': False})
 		
 		self.sendEventStrings(correlator,
 		                      self.timestamp(1),
