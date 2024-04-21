@@ -1,13 +1,7 @@
 /*
- * $Copyright (c) 2018-2023 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
+ * $Copyright (c) 2018-2024 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
  * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Software AG
  */
-
-/*********
- * Note: this block is now available in 10.9.0.x or later of Analytics Builder as
- * part of the product.  The below is for reference use only, we recommend using
- * the product block where applicable.
- ********/
 
 package apamax.analyticskit.blocks.cumulocity;
 
@@ -58,7 +52,8 @@ event CreateMultiMeasurement_$Parameters {
 /**
  * Complex Measurement Output.
  *
- * Creates a new complex <tt>Measurement</tt> object for the associated device or the triggering device.
+ * Creates a new complex <tt>Measurement</tt> object for the associated device or the triggering 
+ * device. A complex measurement may have multiple fragments and series.
  *
  * This block sends a new measurement to Cumulocity IoT containing multiple fragments and series. 
  * The list of fragments and series is included as properties on the Value input. The measurement
@@ -114,6 +109,11 @@ event CreateMultiMeasurement {
 				m.time := $input_time;
 	
 				string key;
+				// Extract measurement values from properties
+				// assumption is that any property name containing a 
+				// single dot is a measurement value with the part
+				// before the dot being the fragment and the rest the
+				// series name
 				for key in $input_value.properties.keys() {
 					sequence<string> parts := ".".split(key);
 					if(parts.size()=2) {
@@ -130,12 +130,10 @@ event CreateMultiMeasurement {
 									mv.value := v; 
 								}
 								case dictionary<any,any>:   {
-									if(v.hasKey("value")) {
-										// TODO safe
+									if(v.hasKey("value") and v["value"].getTypeName()="float") {
 										mv.value := <float>v["value"];
 									}
-									if(v.hasKey("unit")) {
-										// TODO safe
+									if(v.hasKey("unit") and v["unit"].getTypeName()="string") {
 										mv.unit := <string>v["unit"];
 									}
 								}
@@ -149,5 +147,4 @@ event CreateMultiMeasurement {
 	}
 	
 	constant string $INPUT_TYPE_value := "pulse";
-
 }
