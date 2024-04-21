@@ -77,7 +77,8 @@ event TimeSeriesDownsample {
 	 */
 	action $process(Activation $activation, float $input_value, boolean $input_sample, TimeSeriesDownsample_$State $blockState) {
 		if $base.getInputCount("sample") = 0 or $input_sample {
-			Value v :=new Value;
+			Value v := new Value;
+			v.value := true;
 			dictionary<float,float> ts := new dictionary<float,float>;
 			ts[$blockState.timestamp_first] := $blockState.first;
 			ts[$blockState.timestamp_last] := $blockState.last;
