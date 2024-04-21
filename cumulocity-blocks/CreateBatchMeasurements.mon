@@ -84,7 +84,7 @@ s * @$titleIsDerived true
  */
 event CreateBatchMeasurements {
 	BlockBase $base;
-	CreateBatchMeasurement_$Parameters $parameters;
+	CreateBatchMeasurements_$Parameters $parameters;
 	/** Sends to the 'current' device from the activation's partition: */
 	CumulocityOutputHandler outputHandler;
 	
