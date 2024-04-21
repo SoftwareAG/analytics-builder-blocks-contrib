@@ -80,7 +80,7 @@ event CreateBatchMeasurements_$Parameters {
  * @$producesOutput
  * @$blockType c8y_Output
  * @$derivedName $fragment Batch Measurement
-s * @$titleIsDerived true
+ * @$titleIsDerived true
  */
 event CreateBatchMeasurements {
 	BlockBase $base;
