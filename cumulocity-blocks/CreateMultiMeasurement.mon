@@ -37,14 +37,7 @@ event CreateMultiMeasurement_$Parameters {
 
 	/** Validate parameters */
 	action $validate() {
-		switch(deviceId) {
-			case string: { BlockBase.throwsOnEmpty(deviceId, "deviceId", self); }
-			default: {
-				if deviceId = any() or deviceId.getEntry("currentDevice") != <any> true {
-					throw Exception("Expected a device Id or a currentDevice object", "IllegalArgumentException"); // NON-L10N-DEV
-				}
-			}
-		}
+		BlockBase.throwsOnEmpty(deviceId, "deviceId", self);
 		BlockBase.throwsOnEmpty(measurementType, "measurementType", self);
 	}
 }
