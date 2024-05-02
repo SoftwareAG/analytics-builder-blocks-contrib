@@ -122,6 +122,14 @@ event CreateMultiMeasurement {
 								case float:   				{ 
 									mv.value := v; 
 								}
+								case dictionary<string,any>:   {
+									if(v.hasKey("value") and v["value"].getTypeName()="float") {
+										mv.value := <float>v["value"];
+									}
+									if(v.hasKey("unit") and v["unit"].getTypeName()="string") {
+										mv.unit := <string>v["unit"];
+									}
+								}								
 								case dictionary<any,any>:   {
 									if(v.hasKey("value") and v["value"].getTypeName()="float") {
 										mv.value := <float>v["value"];
