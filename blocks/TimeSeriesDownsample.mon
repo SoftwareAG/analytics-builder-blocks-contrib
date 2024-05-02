@@ -1,5 +1,5 @@
 /*
- * $Copyright (c) 2020-2023 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
+ * $Copyright (c) 2020-2024 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
  * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Software AG
  */
 
@@ -76,8 +76,10 @@ event TimeSeriesDownsample {
 	 * @param $input_sample A new sample is provided.
 	 */
 	action $process(Activation $activation, float $input_value, boolean $input_sample, TimeSeriesDownsample_$State $blockState) {
+		$blockState.update($input_value, $activation.timestamp);
 		if $base.getInputCount("sample") = 0 or $input_sample {
-			Value v :=new Value;
+			Value v := new Value;
+			v.value := true;
 			dictionary<float,float> ts := new dictionary<float,float>;
 			ts[$blockState.timestamp_first] := $blockState.first;
 			ts[$blockState.timestamp_last] := $blockState.last;
@@ -86,9 +88,7 @@ event TimeSeriesDownsample {
 			v.properties["measurements"] := ts;
 			$setOutput_downSampledMeasurements($activation, v);
 			$blockState.reset();
-		} else {
-			$blockState.update($input_value, $activation.timestamp);
-		}
+		} 
 	}
 
 	/**

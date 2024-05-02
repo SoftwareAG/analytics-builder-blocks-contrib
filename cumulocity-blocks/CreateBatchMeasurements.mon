@@ -1,5 +1,5 @@
 /*
- * $Copyright (c) 2018-2023 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
+ * $Copyright (c) 2018-2024 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
  * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Software AG
  */
 package apamax.analyticskit.blocks.cumulocity;
@@ -16,7 +16,7 @@ using apama.analyticsbuilder.cumulocity.CumulocityOutputParams;
 using apama.analyticsbuilder.cumulocity.CumulocityOutputHandler;
 using apama.analyticsbuilder.Promise;
 
-event CreateMultiMeasurement_$Parameters {
+event CreateBatchMeasurements_$Parameters {
 	/**
 	 * Device or Trigger Device.
 	 *
@@ -64,26 +64,27 @@ event CreateMultiMeasurement_$Parameters {
 }
 
 /**
- * Multi Measurement Output.
+ * Batch Measurements Output.
  *
  * Creates multiple <tt>Measurement</tt> objects for the associated device or the triggering device.
  *
  * This block uses the properties of the Send input. It expects that a "measurements" property exists 
  * which points to a <tt>dictionary<float,float></tt> where the keys are the timestamps and the values 
  * are the measurement values. 
- * The measurement is sent to the current device or the device specified.
+ *
+ * The measurements are sent to the current device or the device specified.
  *
  * Non-finite values are ignored.
  *
  * @$blockCategory Output
  * @$producesOutput
  * @$blockType c8y_Output
- * @$derivedName $fragment Multi Measurement
+ * @$derivedName $fragment Batch Measurement
  * @$titleIsDerived true
  */
-event CreateMultiMeasurement {
+event CreateBatchMeasurements {
 	BlockBase $base;
-	CreateMultiMeasurement_$Parameters $parameters;
+	CreateBatchMeasurements_$Parameters $parameters;
 	/** Sends to the 'current' device from the activation's partition: */
 	CumulocityOutputHandler outputHandler;
 	
