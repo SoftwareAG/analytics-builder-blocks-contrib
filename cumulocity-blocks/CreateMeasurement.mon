@@ -34,6 +34,13 @@ event CreateMeasurement_$Parameters {
 	any deviceId;
 
 	/**
+	 * Measurement Type.
+	 *
+	 * Identifies the type of this measurement.
+	 */
+	optional<string> measurementType;
+
+	/**
 	 * Fragment Name.
 	 *
 	 * The name of the fragment in the measurement.
@@ -135,6 +142,9 @@ event CreateMeasurement {
 				if validValue and (createOnEveryValidValue or $input_send) {
 					Measurement m := new Measurement;
 					m.type := $parameters.fragment; // while type is required, it's mostly ignored, and typically the fragment name.
+					ifpresent $parameters.measurementType as type {
+						m.type := type;
+					}
 					m.source := device;
 					
 					MeasurementValue mv := new MeasurementValue;
